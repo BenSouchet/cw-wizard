@@ -37,7 +37,7 @@ Now you have two options: **scipt with a GUI** *(like a true software)* or **via
     "password": "YOUR-PASSWORD"
 }
 ```
-For info on why credentials are required [read this section]().
+For info on why credentials are required [read this section](https://github.com/BenSouchet/cw-wizard/edit/main/README.md#security-and-authentification).
 
 2. Check the script help (to see available parameters):
 ```shell
@@ -86,4 +86,5 @@ sudo apt-get install python3-tk
  - For Windows users (tkinter fail):  
 You need to re-start (maybe re-download) the Python3 installer and **check** ☑️ the Optional Features named `tcl/tk and IDLE`.
 
+![tck_tl_option](https://user-images.githubusercontent.com/17025808/153940505-4f0574b4-582d-470a-8731-fe04b5a7743d.png)
 
