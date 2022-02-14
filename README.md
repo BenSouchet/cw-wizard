@@ -45,7 +45,7 @@ For info on why credentials are required [read this section](https://github.com/
 Hi there! I'm the Wizard, that do you want to do:
 ```
 
-As you can see, you can call the script with one or more wishlist urls, and there is optional arguments available like `--max_sellers` ([info on script arguments]()).
+As you can see, you can call the script with one or more wishlist urls, and there is optional arguments available like `--max_sellers` ([info on script arguments](https://github.com/BenSouchet/cw-wizard/blob/main/README.md#script-arguments)).
 
 3. A classic example would be:
 ```shell
