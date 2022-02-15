@@ -41,8 +41,20 @@ For info on why credentials are required [read this section](https://github.com/
 
 2. Check the script help (to see available parameters):
 ```shell
-> python3 cw-wizard.py 
-Hi there! I'm the Wizard, that do you want to do:
+> python3 cw-wizard.py -h
+usage: CW Wizard [-h] [-v] -w WISHLIST_URLS [WISHLIST_URLS ...] [-m MAX_SELLERS] [-c]
+
+CW Wizard, Find the best bundles for the cards in your wishlist(s).
+
+optional arguments:
+  -h, --help            show this help message and exit
+  -v, --version         show program's version number and exit
+  -w WISHLIST_URLS [WISHLIST_URLS ...], --wishlist-urls WISHLIST_URLS [WISHLIST_URLS ...]
+                        wishlist url(s) (if you pass multiples whislists, separate them with spaces)
+  -m MAX_SELLERS, --max-sellers MAX_SELLERS
+                        maximum number of sellers to display on the result page
+  -c, --continue-on-error
+                        if specified the script will continue on non fatal errors
 ```
 
 As you can see, you can call the script with one or more wishlist urls, and there is optional arguments available like `--max_sellers` ([info on script arguments](https://github.com/BenSouchet/cw-wizard/blob/main/README.md#script-arguments)).
