@@ -42,6 +42,8 @@ For info on why credentials are required [read this section](https://github.com/
 2. Check the script help (to see available parameters):
 ```shell
 > python3 cw-wizard.py -h
+```
+```text
 usage: CW Wizard [-h] [-v] -w WISHLIST_URLS [WISHLIST_URLS ...] [-m MAX_SELLERS] [-c]
 
 CW Wizard, Find the best bundles for the cards in your wishlist(s).
