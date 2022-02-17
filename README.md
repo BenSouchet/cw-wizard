@@ -1,5 +1,8 @@
 # Cardmarket Wishlist Wizard 🧙🏼‍♂️🪄
 
+![banner](https://user-images.githubusercontent.com/17025808/154534238-e8386e2f-c888-4f03-9855-c591dd19e85c.jpg)
+
+
 **CW Wizard** (Cardmarket Wishlist Wizard), is a *Python 3* script to find **the best deals** (bundles) that can be done for the cards you are looking for in your wishlists.
 
 - Easily find the sellers with the most cards you are looking for 🃏
@@ -74,6 +77,7 @@ Example with multiple wishlists:
 ```shell
 > python3 cw-wizard.py -w https://www.cardmarket.com/en/Pokemon/Wants/10876807 https://www.cardmarket.com/en/Pokemon/Wants/10841970
 ```
+5. If everything goes well a result HTML page will open on your default web browser, otherwise check the terminal to see the error message(s).
 
 ### Script Arguments
 With the command line version of the script you can use the following arguments:
@@ -92,7 +96,7 @@ Since Cardmarket Wantlists (wishlists) cannot be public this is required that yo
 
 This is why you credentials are required in order that the script work, if you aren't confident putting you credentials please review the code, since all the code is hosted here on Github you can see and check that nothing weird is done with your credentials.
 
-As indicated at the beginning of this README, accounts with Two-factor authentication (2FA)](https://en.wikipedia.org/wiki/Help:Two-factor_authentication) enabled won't be able to use this script, currently the feature is not planned to be added to the project.
+As indicated at the beginning of this README, accounts with [Two-factor authentication (2FA)](https://en.wikipedia.org/wiki/Help:Two-factor_authentication) enabled won't be able to use this script, currently the feature is not planned to be added to the project.
 
 ## Origin of the Project
 This project has been created because the exiting tools (provided by [Cardmarket](https://www.cardmarket.com/en/Pokemon/Wants/ShoppingWizard)) are good but somehow limited, with this open-souce script it's easy to get exactly the result wanted.  
@@ -101,6 +105,7 @@ If in the future, this project inspire others to create there own tools this wou
 ## Others Ressouces & Useful links
 - [CardmarketToCSV](https://github.com/decdod/CardmarketToCSV) by [ddkod](https://github.com/decdod)
 - [Python Requests Documentation](https://docs.python-requests.org/en/latest/user/quickstart/)
+- [Tillana Font](https://fonts.google.com/specimen/Tillana) by the [Indian Type Foundry](https://www.indiantypefoundry.com/) (License: [Open Font License](https://scripts.sil.org/cms/scripts/page.php?site_id=nrsi&id=OFL))
 
 ## Author & maintainer
 CW Wizard has been created and is currently maintained by [Ben Souchet](https://github.com/BenSouchet).
