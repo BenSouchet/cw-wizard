@@ -1,0 +1,46 @@
+<!DOCTYPE html>
+<html lang="en-US">
+	<head>
+		<meta charset="UTF-8">
+		<meta name="viewport" content="width=device-width, initial-scale=1">
+        <title>CW Wizard - Relevant Sellers</title>
+        <link href="./assets/fonts/tillana-normal-latin.woff2" rel="preload" as="font" type="font/woff2">
+		<link href="./assets/fonts/tillana-bold-latin.woff2" rel="preload" as="font" type="font/woff2">
+        <link rel="preload" as="image" href="./assets/images/main_bg.jpg">
+        <link href="./assets/css/style.css" rel="stylesheet preload prefetch" as="style" type="text/css">
+    </head>
+	<body>
+        <header role="banner">
+            <h1 aria-label="Site name">- CW Wizard -</h1>
+            <h4>Easily find the sellers with the most cards you are looking for!</h4>
+        </header>
+        <main id="main-content" role="main">
+            <div id="wishlists" class="container">
+                <h3>Wishlist(s) you give to the Wizard:</h3>
+                <div id="wishlist-links" class="grid-items">
+                </div>
+            </div>
+            <hr>
+            <div id="relevant-sellers" class="container">
+                <h2>Most Relevant Sellers (<span id="max-sellers-value"></span>):</h2>
+                <div id="relevant-sellers-items" class="grid-items">
+                </div>
+            </div>
+            <div id="sellers-cards-lists">
+            </div>
+            <div id="popup-container" class="hidden">
+                <div id="popup-modal">
+                    <div id="popup-header"><a href="#" id="popup-seller-name" class="seller-name" target="_blank" rel="noopener noreferrer"></a><a href="#" onclick="closePopup(); return false;" title="Close the popup.">Close</a></div>
+                    <div id="list-header" class="card-item"><span></span><span></span><span>Card Name</span><span>Price</span></div>
+                    <div id="cards-list">
+                    </div>
+                </div>
+                <a href="#" id="outside-popup" onclick="closePopup(); return false;"></a>
+            </div>
+        </main>
+        <script src="./assets/js/main.js"></script>
+        <footer>
+            <span>&copy; CW Wizard. Open Source Project <a href="https://github.com/BenSouchet/cw-wizard" target="_blank" rel="noopener noreferrer">hosted on Github</a>. Code under the <a href="https://github.com/BenSouchet/cw-wizard/blob/main/LICENSE" target="_blank" rel="noopener noreferrer">MIT License</a>.</span>
+        </footer>
+    </body>
+</html>
