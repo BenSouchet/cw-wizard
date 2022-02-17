@@ -88,7 +88,7 @@ With the command line version of the script you can use the following arguments:
 | `-h` *OR* `--help` | Display the help in your terminal | No |
 | `-w` *OR* `--wishlist_urls` | One or more Cardmarket wishlists (wantlists) urls.<br />If you add multiple urls simply put a space between then (not a comma). | **Yes** |
 | `-m` *OR* `--max_sellers` | The maximum number of sellers to display on the result page.<br />Default value `20`. `0` means display all. | No |
-| `-c` *OR* `--continue_on_error` | Whatever to stop on non fatal requests errors.<br />Default value `True`. | No |
+| `-c` *OR* `--continue_on_error` | Whatever to stop on non fatal requests errors.<br />Default value `False`. | No |
 
 
 ## Security and Authentification
