@@ -125,4 +125,4 @@ If in the future, this project inspire others to create there own tools this wou
 ## Author & maintainer
 CW Wizard has been created and is currently maintained by [Ben Souchet](https://github.com/BenSouchet).
 
-The code present in this repository is under [MIT license](https://github.com/BenSouchet/sorbus/blob/main/LICENSE).
+The code present in this repository is under [MIT license](https://github.com/BenSouchet/cw-wizard/blob/main/LICENSE).
