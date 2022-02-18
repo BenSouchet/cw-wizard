@@ -90,6 +90,21 @@ With the command line version of the script you can use the following arguments:
 | `-m` *OR* `--max_sellers` | The maximum number of sellers to display on the result page.<br />Default value `20`. `0` means display all. | No |
 | `-c` *OR* `--continue_on_error` | Whatever to stop on non fatal requests errors.<br />Default value `False`. | No |
 
+## Sorting Relevant Sellers
+Currently the most relevant sellers are the ones with the most cards you are looking for in your wishlists.  
+A more accurate way for sorting the sellers would be with cards prices and cards rarity:
+ 1. **Rarity Index** : Every rarity get a value from 1 to N (stating from the rarest to the more common).  
+We can assign the same rarity index for multiple rarities if they are equally "rare" ("rare" can be discribe as the percentage of chance to get this card in a booster).
+ 3. **Card Index** : For every cards in a seller list we multiply the card rarity by the price.
+ 4. **Total** : Sum the cards Indexes and divide by the number of cards to get an average.
+ 5. **Normalizing** : when every sellers is done, the seller with the highest total value represent a deal index of 50% and the seller with the lower total value represent 100%. For all the other sellers do cross product to determine the deal index according to the highest and lowest we just find.
+
+**BUT** the technic describe above is very good *"in theory"* but some **heavy** limitations occur:
+- First point, there is **A LOT** of card rarities, across the different TCGs. Since we need to assign value (rarity index) for all of them this can get pretty messy.
+- Second and most important point, cards with the same rarity aren't equally "rare", for example **Charizard 4/102** and **Alakazam 1/102** are both *holofoil rare* but **Charizard** is way more "rare" because of popularity. So, in the equation a **Popularity Index** need to be added for every cards...
+
+As you can understand implementing a more accurate sorting system is not an easy task at all, and require lot of data.  
+If you have another method in mind let me know 🙂
 
 ## Security and Authentification
 Since Cardmarket Wantlists (wishlists) cannot be public this is required that you are logged in, so cards data can be retrieved.
