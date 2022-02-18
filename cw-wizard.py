@@ -5,9 +5,6 @@ import logging
 import requests
 import argparse
 
-from tkinter import *
-from tkinter import ttk
-
 from decimal import Decimal
 from pathlib import Path
 from bs4 import BeautifulSoup
@@ -25,8 +22,7 @@ CURR_GAME = None
 
 CARDMARKET_BASE_URL = 'https://www.cardmarket.com'
 
-# These two values can be overwriten via script arguments
-STOP_ON_ERROR = True
+# This value can be overwriten via script arguments
 MAXIMUM_SELLERS = 20
 
 CARD_LANGUAGES =  { 'English': 1, 'French': 2, 'German': 3, 'Spanish': 4,
@@ -90,7 +86,7 @@ def init_logger():
 def log_detailed_request_error(task, response):
     status_code = response.status_code
     LOG.error('Unable to {}. Request status code "{}":'.format(task, str(status_code)))
-    
+
     # Check if we have more info on the request error
     status_code_info = REQUEST_ERRORS.get(status_code)
     if status_code_info:
@@ -134,7 +130,7 @@ def cardmarket_log_in(session, credentials):
     token = regex_match.group('token')
     referal_page_path = '/{}/{}'.format(CURR_LANG, CURR_GAME)
     payload = {'__cmtkn': token, 'referalPage': referal_page_path, 'username': credentials['login'], 'userPassword': credentials['password']}
-    
+
     # Step 4: Do the log-in POST request to Cardmarket with the payload
     response_post_login = session.post('{}/{}/{}/PostGetAction/User_Login'.format(CARDMARKET_BASE_URL, CURR_LANG, CURR_GAME), data=payload)
     if response_post_login.status_code != 200:
@@ -170,7 +166,7 @@ def retrieve_wishlist(session, wishlist_url):
     if response_get_wishlist.status_code != 200:
         # Issue with the request
         return log_detailed_request_error('access to the wishlist ("{}")'.format(wishlist_url), response_get_wishlist)
-    
+
     # Step 2: Convert response to BeautifulSoup object
     soup = BeautifulSoup(response_get_wishlist.text, 'html.parser')
 
@@ -206,12 +202,12 @@ def retrieve_wishlist(session, wishlist_url):
 
         for attribute in ['minCondition', 'isReverse', 'isSigned', 'isFirstEd', 'isAltered']:
             card[attribute] = row.contents[column_index[attribute]].find('span', class_='sr-only').contents[0]
-        
+
         card['maxPrice'] = row.contents[column_index['maxPrice']].span.contents[0]
         # If maxPrice is a value we convert it into a Decimal
         if card['maxPrice'] != 'N/A':
             card['maxPrice'] = Decimal(card['maxPrice'].split(' ')[0].replace('.','').replace(',','.'))
-        
+
         # Step 5.B: Add newly created card dict to the wishlish array
         wishlist.append(card)
 
@@ -245,7 +241,7 @@ def populate_sellers_dict(session, sellers, wishlist, continue_on_error=False):
                 if continue_on_error:
                     continue
                 return None
-            
+
             card_full_url = response_get_card_articles.url
 
             # Step 3: Retrieve the articles table (BeautifulSoup object)
@@ -291,7 +287,7 @@ def populate_sellers_dict(session, sellers, wishlist, continue_on_error=False):
 
                 # Step 4.E: Add seller name in the corresponding list
                 card_sellers_names.append(seller_name)
-    
+
     return sellers
 
 def determine_relevant_sellers(sellers, max_sellers):
@@ -307,7 +303,7 @@ def determine_relevant_sellers(sellers, max_sellers):
         for article in data['cards']:
             total_price += article['price']
         sorted_list.append((seller_name, len(data['cards']), str(total_price)))
-    
+
     from operator import itemgetter
     sorted_list = sorted(sorted_list,key=itemgetter(1), reverse=True)
 
@@ -356,7 +352,7 @@ def build_result_page(wishlists_info, max_sellers, sellers, relevant_sellers):
         wishlists_links_html_str += '<a class="wishlist-item button" href="{}" target="_blank" rel="noopener noreferrer">{}</a>'.format(wishlist_info[0], wishlist_info[1])
     wishlists_parent_tag.append(BeautifulSoup(wishlists_links_html_str, 'html.parser'))
 
-    # Step 2.C: Retrieve containers tags and declare variables for relevant sellers 
+    # Step 2.C: Retrieve containers tags and declare variables for relevant sellers
     sellers_parent_tag = soup.find('div', id='relevant-sellers-items')
     sellers_html_str = ''
 
@@ -394,9 +390,9 @@ def build_result_page(wishlists_info, max_sellers, sellers, relevant_sellers):
     except IOError as err:
         LOG.error('Error while creating the result file ("{}").'.format(result_path))
         return LOG.error(err)
-    
+
     LOG.info('The result page has been created here: "{}"\n'.format(result_path.as_uri()))
-    
+
     # Step 4: Open the result page
     import webbrowser
     try:
@@ -439,7 +435,7 @@ def cardmarket_wishlist_wizard(credentials, wishlist_urls, continue_on_error, ma
                     continue
                 # Only break, not return so we can still log out of Cardmarket
                 break
-            
+
             # Step 2.A: Add info to the wishlists_info list
             wishlists_info.append((wishlist_url, wishlist.pop(0)))
 
@@ -480,7 +476,7 @@ def get_credentials_from_file(credentials_path):
         LOG.error('Credentials file "{}" cannot be properly opened.'.format(credentials_path))
         LOG.error(err)
         return None
-    
+
     # Step 3: Check if the JSON object contains the necessary keys and values
     #         And the values are strings
     keys_to_check = ['login', 'password']
@@ -508,10 +504,10 @@ def get_credentials_user_inputs(credentials_path):
             create_the_file =  False
         else:
             question = 'Unrecognize anwser, please enter'
-    
+
     if not create_the_file:
         return LOG.error('Script cannot proceed without the credentials file.')
-    
+
     # Step 2: Ask for the login
     credentials['login'] = input('Enter your Cardmarket login: ')
 
@@ -579,7 +575,7 @@ def main(wishlist_urls, continue_on_error, max_sellers):
     success = check_input_parameters_and_set_global_info(wishlist_urls, max_sellers)
     if not success:
         return LOG.error(EXIT_ERROR_MSG)
-    
+
     # Step 3: Retrieve credentials
     credentials_path = Path.cwd().joinpath('credentials.json')
     credentials = get_credentials_from_file(credentials_path)
@@ -595,7 +591,7 @@ def main(wishlist_urls, continue_on_error, max_sellers):
 
     if not success:
         return LOG.error(EXIT_ERROR_MSG)
-    
+
     LOG.info(EXIT_SUCCESS_MSG)
     return success
 
@@ -608,19 +604,4 @@ if __name__ == '__main__':
 
     arguments = parser.parse_args()
 
-    # root = Tk()
-    # frm = ttk.Frame(root, padding=10)
-    # frm.grid()
-    # ttk.Label(frm, text="Hello World!").grid(column=0, row=0)
-    # ttk.Button(frm, text="Quit", command=root.destroy).grid(column=1, row=0)
-    # root.mainloop()
-
     main(arguments.wishlist_urls, arguments.continue_on_error, arguments.max_sellers)
-
-    # result in HTML with link in info log + auto open page
-    # GUI
-    # Add links of imgs if exists
-    # Add comments if exists
-
-
-    

@@ -18,3 +18,5 @@ Thumbs.db
 .vscode
 # Generate Result Page
 result.html
+# Credentials File
+credentials.json
