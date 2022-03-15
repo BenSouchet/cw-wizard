@@ -13,7 +13,7 @@
 **Disclaimer**: If you have activated the [Two-factor authentication (2FA)](https://en.wikipedia.org/wiki/Help:Two-factor_authentication) on your Cardmarket account this script won't work (this feature is not planned to be added soon).
 
 ## How to Use
-First, make sure that the [required packages are installed and up-to-date](https://github.com/BenSouchet/cw-wizard/blob/main/REQUIREMENTS.md#requirements)
+It's a Python script, so first, make sure that the [required packages are installed and up-to-date](https://github.com/BenSouchet/cw-wizard/blob/main/REQUIREMENTS.md#requirements)
 
 Let’s get started by downloading the project:
 ```shell
@@ -27,7 +27,7 @@ Now you have two options: ~~**scipt with a GUI** *(like a true software)* or~~ *
 
 ### Starting the Script with a User Interface (Not Yet Available)
 **/!\ Currently this option isn't available, use the script in command line. /!\\**
-1. In this case you need to make sure that **tkinter** is available on your computer ([check here](https://github.com/BenSouchet/cw-wizard/blob/main/REQUIREMENTS.md#optional)).
+1. In this case you need to make sure that **tkinter** is available on your computer ([check here](https://github.com/BenSouchet/cw-wizard/blob/main/REQUIREMENTS.md#optional-needed-for-the-user-interface-script)).
 2. execute this command in your terminal:
 ```shell
 > python3 cw-wizard-gui.py
