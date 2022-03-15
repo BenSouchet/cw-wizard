@@ -11,7 +11,7 @@ Install it with this command in your terminal of choice:
 python3 -m pip install beautifulsoup4
 ```
 
-## Optional
+## Optional (needed for the User Interface script)
 - **tkinter**, GUI framework for Python. Only needed if you want to use the GUI script (`cw-wizard-gui.py`).
  - For *Mac OS* users:
 ```bash
