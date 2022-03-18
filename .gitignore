@@ -16,6 +16,7 @@ Thumbs.db
 *.sublime-workspace
 .idea
 .vscode
+*.pyc
 # Generate Result Page
 result.html
 # Credentials File

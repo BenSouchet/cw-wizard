@@ -25,7 +25,7 @@ body {
     margin: 0 auto;
     max-width: 1000px;
     width: 100%;
-    box-sizing: border-box;   
+    box-sizing: border-box;
 	overscroll-behavior: none;
 	color: #f1d4b0;
 }
@@ -71,7 +71,7 @@ main {
 	background-color: #af8b6b2e;
 	border: 1px solid #ab90762e;
 }
-#wishlists {
+#wantlists {
     margin-bottom: 1rem;
 }
 .container h3 {
@@ -104,11 +104,11 @@ a.button:focus {
     background-color: #792f8352;
 	border: 1px solid #b566bf87;
 }
-a.wishlist-item {
+a.wantlist-item {
     padding: 6px 10px 4px;
     text-decoration: none;
 }
-a.wishlist-item:hover, a.wishlist-item:focus {
+a.wantlist-item:hover, a.wantlist-item:focus {
 	text-shadow: 1px 1px 2px #4e0a56;
 }
 .seller-item {
@@ -174,7 +174,7 @@ a.seller-name:focus {
     justify-content: center;
     align-items: center;
     align-content: center;
-    top: 0;	
+    top: 0;
 	right: 0;
 	bottom: 0;
     left: 0;
@@ -331,7 +331,7 @@ a.seller-name:focus {
     cursor: default;
     top: 0;
     right: 0;
-    bottom: 0;	
+    bottom: 0;
 	left: 0;
 }
 footer {

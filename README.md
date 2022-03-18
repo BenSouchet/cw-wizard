@@ -1,9 +1,9 @@
-# Cardmarket Wishlist Wizard 🧙🏼‍♂️🪄
+# Cardmarket wantlist Wizard 🧙🏼‍♂️🪄
 
 ![banner](https://user-images.githubusercontent.com/17025808/154534238-e8386e2f-c888-4f03-9855-c591dd19e85c.jpg)
 
 
-**CW Wizard** (Cardmarket Wishlist Wizard), is a *Python 3* script to find **the best deals** (bundles) that can be done for the cards you are looking for in your wishlists.
+**CW Wizard** (Cardmarket wantlist Wizard), is a *Python 3* script to find **the best deals** (bundles) that can be done for the cards you are looking for in your wantlists.
 
 - Easily find the sellers with the most cards you are looking for 🃏
 - Open Source script with MIT license, you can create you own Wizard 💫
@@ -52,28 +52,28 @@ For info on why credentials are required [read this section](https://github.com/
 > python3 cw-wizard.py -h
 ```
 ```text
-usage: CW Wizard [-h] [-v] -w WISHLIST_URLS [WISHLIST_URLS ...] [-m MAX_SELLERS] [-c]
+usage: CW Wizard [-h] [-v] -w wantlist_URLS [wantlist_URLS ...] [-m MAX_SELLERS] [-c]
 
-CW Wizard, Find the best bundles for the cards in your wishlist(s).
+CW Wizard, Find the best bundles for the cards in your wantlist(s).
 
 optional arguments:
   -h, --help            show this help message and exit
   -v, --version         show program's version number and exit
-  -w WISHLIST_URLS [WISHLIST_URLS ...], --wishlist-urls WISHLIST_URLS [WISHLIST_URLS ...]
-                        wishlist url(s) (if you pass multiples whislists, separate them with spaces)
+  -w wantlist_URLS [wantlist_URLS ...], --wantlist-urls wantlist_URLS [wantlist_URLS ...]
+                        wantlist url(s) (if you pass multiples whislists, separate them with spaces)
   -m MAX_SELLERS, --max-sellers MAX_SELLERS
                         maximum number of sellers to display on the result page
   -c, --continue-on-error
                         if specified the script will continue on non fatal errors
 ```
 
-As you can see, you can call the script with one or more wishlist urls, and there is optional arguments available ([info on script arguments](https://github.com/BenSouchet/cw-wizard/blob/main/README.md#script-arguments)).
+As you can see, you can call the script with one or more wantlist urls, and there is optional arguments available ([info on script arguments](https://github.com/BenSouchet/cw-wizard/blob/main/README.md#script-arguments)).
 
 4. A basic example would be:
 ```shell
 > python3 cw-wizard.py -w https://www.cardmarket.com/en/Pokemon/Wants/10876807 -m 10
 ```
-Example with multiple wishlists:
+Example with multiple wantlists:
 ```shell
 > python3 cw-wizard.py -w https://www.cardmarket.com/en/Pokemon/Wants/10876807 https://www.cardmarket.com/en/Pokemon/Wants/10841970
 ```
@@ -86,12 +86,12 @@ With the command line version of the script you can use the following arguments:
 |:-------------:|:-----------:|:--------:|
 | `-v` *OR* `--version` | Display the version number of the script in your terminal | No |
 | `-h` *OR* `--help` | Display the help in your terminal | No |
-| `-w` *OR* `--wishlist_urls` | One or more Cardmarket wishlists (wantlists) urls.<br />If you add multiple urls simply put a space between then (not a comma). | **Yes** |
+| `-w` *OR* `--wantlist_urls` | One or more Cardmarket wantlists (wantlists) urls.<br />If you add multiple urls simply put a space between then (not a comma). | **Yes** |
 | `-m` *OR* `--max_sellers` | The maximum number of sellers to display on the result page.<br />Default value `20`. `0` means display all. | No |
 | `-c` *OR* `--continue_on_error` | Whatever to stop on non fatal requests errors.<br />Default value `False`. | No |
 
 ## Sorting Relevant Sellers
-Currently the most relevant sellers are the ones with the most cards you are looking for in your wishlists.  
+Currently the most relevant sellers are the ones with the most cards you are looking for in your wantlists.  
 A more accurate way for sorting the sellers would be with cards prices and cards rarity:
  1. **Rarity Index** : Every rarity get a value from 1 to N (stating from the rarest to the more common).  
 We can assign the same rarity index for multiple rarities if they are equally "rare" ("rare" can be discribe as the percentage of chance to get this card in a booster).
@@ -107,7 +107,7 @@ As you can understand implementing a more accurate sorting system is not an easy
 If you have another method in mind let me know 🙂
 
 ## Security and Authentification
-Since Cardmarket Wantlists (wishlists) cannot be public this is required that you are logged in, so cards data can be retrieved.
+Since Cardmarket Wantlists (wantlists) cannot be public this is required that you are logged in, so cards data can be retrieved.
 
 This is why you credentials are required in order that the script work, if you aren't confident putting you credentials please review the code, since all the code is hosted here on Github you can see and check that nothing weird is done with your credentials.
 
