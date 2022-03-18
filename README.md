@@ -1,16 +1,19 @@
-# Cardmarket wantlist Wizard 🧙🏼‍♂️🪄
+# Cardmarket Wantlist Wizard 🧙🏼‍♂️🪄
 
 ![banner](https://user-images.githubusercontent.com/17025808/154534238-e8386e2f-c888-4f03-9855-c591dd19e85c.jpg)
 
 
-**CW Wizard** (Cardmarket wantlist Wizard), is a *Python 3* script to find **the best deals** (bundles) that can be done for the cards you are looking for in your wantlists.
+**CW Wizard** (Cardmarket Wantlist Wizard), is a *Python 3* script to find **the best deals** (bundles) that can be done for the cards you are looking for in your wantlists.
 
 - Easily find the sellers with the most cards you are looking for 🃏
 - Open Source script with MIT license, you can create you own Wizard 💫
 - Fully commented, you can check what is done and how it's done 🧐
 - Work with all card games available on Cardmarket (Magic: The Gathering, Yu-Gi-Oh!, Pokémon, ...) ✨
 
-**Disclaimer**: If you have activated the [Two-factor authentication (2FA)](https://en.wikipedia.org/wiki/Help:Two-factor_authentication) on your Cardmarket account this script won't work (this feature is not planned to be added soon).
+![example_wizard](https://user-images.githubusercontent.com/17025808/159021646-7be4c2e8-4177-430c-97cd-e6d0f716501d.png)
+
+
+**Disclaimer**: If you have activated the [Two-factor authentication (2FA)](https://en.wikipedia.org/wiki/Help:Two-factor_authentication) on your Cardmarket account this script won't work (this feature is **not** planned to be added soon).
 
 ## How to Use
 It's a Python script, so first, make sure that the [required packages are installed and up-to-date](https://github.com/BenSouchet/cw-wizard/blob/main/REQUIREMENTS.md#requirements)
@@ -23,10 +26,9 @@ Cloning into 'cw-wizard'...
 > cd cw-wizard
 ```
 
-Now you have two options: ~~**scipt with a GUI** *(like a true software)* or~~ **via command line** *(like a true developer)*
+Now you have two options: the **script with a User Interface** *(like a true software)* or **via command line** *(like a true developer)*
 
-### Starting the Script with a User Interface (Not Yet Available)
-**/!\ Currently this option isn't available, use the script in command line. /!\\**
+### Starting the Script with a User Interface
 1. In this case you need to make sure that **tkinter** is available on your computer ([check here](https://github.com/BenSouchet/cw-wizard/blob/main/REQUIREMENTS.md#optional-needed-for-the-user-interface-script)).
 2. execute this command in your terminal:
 ```shell
@@ -35,19 +37,7 @@ Now you have two options: ~~**scipt with a GUI** *(like a true software)* or~~ *
 3. Then simply follow the steps in the interface that popped up.
 
 ### Starting the Command Line Script
-1. You need to first create a new JSON file at the root of the project directory named `credentials.json`
-2. In that file, put your cardmarket credentials like in this example:
-```json
-{
-    "login": "YOUR-USERNAME",
-    "password": "YOUR-PASSWORD"
-}
-```
-For info on why credentials are required [read this section](https://github.com/BenSouchet/cw-wizard/edit/main/README.md#security-and-authentification).
-
-**Bonus**: You can also directly start the script and create the `credentials.json` file interactively with the script.
-
-3. Check the script help (to see available parameters):
+1. Check the script help (to see available parameters):
 ```shell
 > python3 cw-wizard.py -h
 ```
@@ -69,7 +59,7 @@ optional arguments:
 
 As you can see, you can call the script with one or more wantlist urls, and there is optional arguments available ([info on script arguments](https://github.com/BenSouchet/cw-wizard/blob/main/README.md#script-arguments)).
 
-4. A basic example would be:
+2. A basic example would be:
 ```shell
 > python3 cw-wizard.py -w https://www.cardmarket.com/en/Pokemon/Wants/10876807 -m 10
 ```
@@ -77,7 +67,10 @@ Example with multiple wantlists:
 ```shell
 > python3 cw-wizard.py -w https://www.cardmarket.com/en/Pokemon/Wants/10876807 https://www.cardmarket.com/en/Pokemon/Wants/10841970
 ```
-5. If everything goes well a result HTML page will open on your default web browser, otherwise check the terminal to see the error message(s).
+3. If it's the first time you start the script your Cardmarket credentials will be asked to create a `credentials.json` file at the root of the project directory. For info on why credentials are required [read this section](https://github.com/BenSouchet/cw-wizard/edit/main/README.md#security-and-authentification).
+<img width="598" alt="credentials_dialog" src="https://user-images.githubusercontent.com/17025808/159022712-b95ef3f5-0da6-4547-8f94-d49c0a4582ee.png">
+
+4. It's all, if everything goes well a result HTML page will open on your default web browser, otherwise check the terminal to see the error message(s).
 
 ### Script Arguments
 With the command line version of the script you can use the following arguments:
@@ -107,7 +100,7 @@ As you can understand implementing a more accurate sorting system is not an easy
 If you have another method in mind let me know 🙂
 
 ## Security and Authentification
-Since Cardmarket Wantlists (wantlists) cannot be public this is required that you are logged in, so cards data can be retrieved.
+Since Cardmarket wantlists cannot be public this is required that you are logged in, so cards data can be retrieved.
 
 This is why you credentials are required in order that the script work, if you aren't confident putting you credentials please review the code, since all the code is hosted here on Github you can see and check that nothing weird is done with your credentials.
 
