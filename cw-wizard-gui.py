@@ -134,7 +134,7 @@ def close_window(window):
 
 def wizard_wrapper(credentials, wantlist_urls, max_sellers):
     # Step 1: Call the Wizard
-    result = cardmarket_wantlist_wizard(credentials, wantlist_urls, continue_on_error=True, max_sellers=max_sellers)
+    result = cardmarket_wantlist_wizard(credentials, wantlist_urls, continue_on_warning=True, max_sellers=max_sellers)
     result.logMessages()
 
     # Step 2: Push result into the thread queue

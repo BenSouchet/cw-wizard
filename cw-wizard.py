@@ -43,7 +43,7 @@ def get_credentials_user_inputs():
 
     return funct_result
 
-def main(wantlist_urls, continue_on_error, max_sellers):
+def main(wantlist_urls, continue_on_warning, max_sellers, articles_comment):
     """Entry point of the CW Wizard script"""
 
     # Step 1: Check input parameters before calling the Wizard
@@ -80,7 +80,7 @@ def main(wantlist_urls, continue_on_error, max_sellers):
         return LOG.error(EXIT_ERROR_MSG)
 
     # Step 3: Call the Wizard
-    result = cardmarket_wantlist_wizard(credentials, wantlist_urls, continue_on_error=continue_on_error, max_sellers=max_sellers)
+    result = cardmarket_wantlist_wizard(credentials, wantlist_urls, continue_on_warning=continue_on_warning, max_sellers=max_sellers, articles_comment=articles_comment)
     result.logMessages()
 
     if not result.isValid():
@@ -91,12 +91,13 @@ def main(wantlist_urls, continue_on_error, max_sellers):
 
 if __name__ == '__main__':
     import argparse
-    parser = argparse.ArgumentParser(prog=SCRIPT_NAME, description='CW Wizard, Find the best bundles for the cards in your wantlist(s).')
-    parser.add_argument('-v', '--version', action='version', version='%(prog)s '+str(VERSION))
-    parser.add_argument('-w', '--wantlist-urls', nargs='+', required=True, type=str, action='extend', help='wantlist url(s) (if you pass multiples whislists, separate them with spaces)')
+    parser = argparse.ArgumentParser(prog=SCRIPT_NAME, description='{} v{}, Find the best bundles for the cards in your wantlist(s).'.format(SCRIPT_NAME, VERSION))
+    parser.add_argument('-v', '--version', action='version', version='%(prog)s '+ VERSION)
+    parser.add_argument('-u', '--wantlist-urls', nargs='+', required=True, type=str, action='extend', help='wantlist url(s) (if you pass multiples whislists, separate them with spaces)')
     parser.add_argument('-m', '--max-sellers', type=int, default=MAXIMUM_SELLERS, help='maximum number of sellers to display on the result page')
-    parser.add_argument('-c', '--continue-on-error', action='store_true', help='if specified the script will continue on non fatal errors')
+    parser.add_argument('-w', '--continue-on-warning', action='store_true', help='if specified the script will continue on non fatal errors')
+    parser.add_argument('-c', '--articles-comment', action='store_true', help='if specified the sellers comments will be added to the result page')
 
     arguments = parser.parse_args()
 
-    main(arguments.wantlist_urls, arguments.continue_on_error, arguments.max_sellers)
+    main(arguments.wantlist_urls, arguments.continue_on_warning, arguments.max_sellers, arguments.articles_comment)

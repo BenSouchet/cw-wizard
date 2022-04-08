@@ -42,19 +42,21 @@ Now you have two options: the **script with a User Interface** *(like a true sof
 > python3 cw-wizard.py -h
 ```
 ```text
-usage: CW Wizard [-h] [-v] -w wantlist_URLS [wantlist_URLS ...] [-m MAX_SELLERS] [-c]
+usage: CW Wizard [-h] [-v] -u WANTLIST_URLS [WANTLIST_URLS ...] [-m MAX_SELLERS] [-w] [-c]
 
 CW Wizard, Find the best bundles for the cards in your wantlist(s).
 
 optional arguments:
   -h, --help            show this help message and exit
   -v, --version         show program's version number and exit
-  -w wantlist_URLS [wantlist_URLS ...], --wantlist-urls wantlist_URLS [wantlist_URLS ...]
+  -u WANTLIST_URLS [WANTLIST_URLS ...], --wantlist-urls WANTLIST_URLS [WANTLIST_URLS ...]
                         wantlist url(s) (if you pass multiples whislists, separate them with spaces)
   -m MAX_SELLERS, --max-sellers MAX_SELLERS
                         maximum number of sellers to display on the result page
-  -c, --continue-on-error
+  -w, --continue-on-warning
                         if specified the script will continue on non fatal errors
+  -c, --articles-comment
+                        if specified the sellers comments will be added to the result page
 ```
 
 As you can see, you can call the script with one or more wantlist urls, and there is optional arguments available ([info on script arguments](https://github.com/BenSouchet/cw-wizard/blob/main/README.md#script-arguments)).
@@ -79,9 +81,20 @@ With the command line version of the script you can use the following arguments:
 |:-------------:|:-----------:|:--------:|
 | `-v` *OR* `--version` | Display the version number of the script in your terminal | No |
 | `-h` *OR* `--help` | Display the help in your terminal | No |
-| `-w` *OR* `--wantlist_urls` | One or more Cardmarket wantlists (wantlists) urls.<br />If you add multiple urls simply put a space between then (not a comma). | **Yes** |
-| `-m` *OR* `--max_sellers` | The maximum number of sellers to display on the result page.<br />Default value `20`. `0` means display all. | No |
-| `-c` *OR* `--continue_on_error` | Whatever to stop on non fatal requests errors.<br />Default value `False`. | No |
+| `-u` *OR* `--wantlist-urls` | One or more Cardmarket wantlists (wantlists) urls.<br />If you add multiple urls simply put a space between then (not a comma). | **Yes** |
+| `-m` *OR* `--max-sellers` | The maximum number of sellers to display on the result page.<br />Default value `20`. `0` means display all. | No |
+| `-w` *OR* `--continue-on-warning` | If specified the script won't stop on non fatal requests errors. | No |
+| `-c` *OR* `--articles-comment` |If specified the script will retrieve and add sellers comments to the result page. | No |
+
+## Version
+Current version is `1.0.0`, you can download this latest release on the Releases category (on the sidebar), from [this page](https://github.com/BenSouchet/cw-wizard/releases) or `git clone` the `main` branch of the repository.
+
+### Latest Version Changelog
+- Handle more than the 50 first articles for the card pages (see function [`load_more_articles()`]()).
+- Skip article and sellers that doesn't ship to your address.
+- Extract and display sellers comments for articles (if script argument `-c` is specified).
+- Add number or sales of the current seller when you display the cards list.
+- Minors code simplification.
 
 ## Sorting Relevant Sellers
 Currently the most relevant sellers are the ones with the most cards you are looking for in your wantlists.  

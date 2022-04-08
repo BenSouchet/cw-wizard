@@ -197,13 +197,18 @@ a.seller-name:focus {
 }
 #popup-header {
     display: grid;
-    grid-template-columns: 1fr auto;
+    grid-template-columns: auto 1fr auto;
     place-items: start;
+    gap: .8rem;
+    padding-top: .2rem;
+}
+#popup-header .close-popup {
+    line-height: 1em;
 }
 .card-item {
     width: 100%;
     display: grid;
-    grid-template-columns: 34px 24px 1fr 66px 1px;/* Last column for the scrollbar */
+    grid-template-columns: 34px 24px auto 1fr 66px 1px;/* Last column for the scrollbar */
     place-items: center start;
     gap: 0.8rem;
     padding: 2px 8px;
@@ -311,6 +316,14 @@ a.seller-name:focus {
 .card-item span:last-of-type {
     justify-self: end;
 }
+.card-item .card-comment {
+    font-size: 0.9em;
+	color: #a58155;
+    overflow: hidden;
+	text-overflow: ellipsis;
+	white-space: nowrap;
+    width: 100%;
+}
 #list-header {
     margin-top: .8rem;
     font-weight: 500;
@@ -318,13 +331,18 @@ a.seller-name:focus {
 }
 #popup-seller-name {
     font-size: 1.4rem;
+    line-height: 1.3em;
+	align-self: end;
+}
+#popup-seller-sales-number {
+    align-self: end;
 }
 #cards-list {
     display: grid;
     grid-auto-flow: row;
     overflow-y: scroll;
     color: #d3a164;
-    height: calc(100vh - 116px);/* Yes, this an hardcoded value. Bad. Bad. Bad...*/
+    max-height: calc(100vh - 116px);/* Yes, this an hardcoded value. Bad. Bad. Bad...*/
 }
 #outside-popup {
     position: fixed;

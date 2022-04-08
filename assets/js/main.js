@@ -21,6 +21,11 @@ function showCardsList(seller_id) {
     seller_link_popup_tag.href = seller_link_tag.href
     seller_link_popup_tag.innerText = seller_link_tag.innerText;
 
+    var seller_sales_number_tag = document.getElementById("seller-"+seller_id+"-sales-number");
+    var seller_sales_popup_tag = document.getElementById("popup-seller-sales-number");
+    if (!seller_sales_popup_tag) { return false; }
+    seller_sales_popup_tag.innerText = '('+ seller_sales_number_tag.innerText + ' Sales)';
+
     // Step 4: Block overflow body
     var body = document.querySelector("body");
     body.style.overflow = "hidden";
@@ -38,4 +43,6 @@ function closePopup() {
     // Step 2: Block overflow body
     var body = document.querySelector("body");
     body.style.overflow = "auto";
+
+    return false;
 }

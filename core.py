@@ -1,7 +1,7 @@
-import os
 import re
 import sys
 import json
+import base64
 import logging
 import requests
 
@@ -11,7 +11,7 @@ from bs4 import BeautifulSoup
 
 SCRIPT_NAME = 'CW Wizard'
 
-VERSION = 0.2
+VERSION = '1.0.0'
 
 EXIT_ERROR_MSG = 'The Wizard encountered issue(s) please check previous logs.\n'
 EXIT_SUCCESS_MSG = 'The Wizard has finish is work, have a great day!\n'
@@ -21,6 +21,7 @@ CURR_LANG = 'en'
 CURR_GAME = 'Magic'
 
 CARDMARKET_BASE_URL = 'https://www.cardmarket.com'
+CARDMARKET_BASE_URL_REGEX = r'^https:\/\/www\.cardmarket\.com'
 
 # This value can be overwriten via script arguments or via GUI
 MAXIMUM_SELLERS = 20
@@ -32,6 +33,9 @@ CARD_LANGUAGES =  { 'English': 1, 'French': 2, 'German': 3, 'Spanish': 4,
 
 CARD_CONDITIONS = { 'Mint': 1, 'Near Mint': 2, 'Excellent': 3,
                     'Good': 4, 'Light Played': 5, 'Played': 6, 'Poor': 7, }
+
+CARD_CONDITIONS_SHORTNAMES = {  'Mint': 'MT', 'Near Mint': 'NM', 'Excellent': 'EX',
+                                'Good': 'GD', 'Light Played': 'LP', 'Played': 'PL', 'Poor': 'PO', }
 
 # These request errors description are from https://api.cardmarket.com/ws/documentation/API_2.0:Response_Codes
 REQUEST_ERRORS  = { 307: ['Temporary Redirect', 'Particular requests can deliver thousands of entities (e.g. a large stock or requesting articles for a specified product, and many more). Generally all these request allow you to paginate the results - either returning a 206 or 204 HTTP status code. Nevertheless, all these requests can also be done without specifying a pagination. As general values for force-paginated requests please use maxResults=100 in order to avoid being 307\'d again. The first result is indexed with 0: start=0.'],
@@ -61,23 +65,29 @@ class FunctResult():
         self.status = 'error'
         self.messages.append({ 'type': 'error', 'content': message, 'logged': False })
 
-    def addDetailedRequestError(self, task, response):
+    def addDetailedRequestError(self, task, response, as_warning=False):
         status_code = response.status_code
-        self.addError('Unable to {}. Request status code "{}":'.format(task, str(status_code)))
+        message = 'Unable to {}. Request status code "{}":'.format(task, str(status_code))
 
         # Check if we have more info on the request error
         status_code_info = REQUEST_ERRORS.get(status_code)
+        detailed_message = 'Unknown status code!'
         if status_code_info:
             # Log the additional info
-            self.addError('{} -- {}'.format(status_code_info[0], status_code_info[1]))
+            detailed_message = '{} -- {}'.format(status_code_info[0], status_code_info[1])
+
+        if as_warning:
+            self.addWarning(message)
+            self.addWarning(detailed_message)
         else:
-            self.addError('Unknown status code!')
+            self.addError(message)
+            self.addError(detailed_message)
 
     def append(self, result):
         if result.status == 'error':
-            self.result = 'error'
+            self.status = 'error'
         if result.status == 'warning' and self.status == 'valid':
-            self.result = 'warning'
+            self.status = 'warning'
         self.messages = [*self.messages, *result.messages]
 
     def addResult(self, element):
@@ -226,7 +236,7 @@ def cardmarket_log_out(session, silently=False):
 
     return funct_result
 
-def retrieve_wantlist(session, wantlist_url):
+def retrieve_wantlist(session, wantlist_url, continue_on_warning=False):
     funct_result = FunctResult()
 
     LOG.debug('  |____ The Wizard is retrieving the wantlist ("{}")...'.format(wantlist_url))
@@ -237,7 +247,7 @@ def retrieve_wantlist(session, wantlist_url):
     response_get_wantlist = session.get(wantlist_url)
     if response_get_wantlist.status_code != 200:
         # Issue with the request
-        funct_result.addDetailedRequestError('access to the wantlist ("{}")'.format(wantlist_url), response_get_wantlist)
+        funct_result.addDetailedRequestError('access to the wantlist ("{}")'.format(wantlist_url), response_get_wantlist, continue_on_warning)
         return funct_result
 
     # Step 2: Convert response to BeautifulSoup object
@@ -287,7 +297,75 @@ def retrieve_wantlist(session, wantlist_url):
     funct_result.addResult(wantlist)
     return funct_result
 
-def populate_sellers_dict(session, sellers, wantlist, continue_on_error=False):
+def _get_load_more_args(card, product_id):
+    args_dict = { 'page': '0' }
+    filter_settings = {}
+    filter_settings['idLanguage'] = {str(CARD_LANGUAGES[language]): CARD_LANGUAGES[language] for language in card['languages']}
+    for attribute in ['isReverse', 'isSigned', 'isFirstEd', 'isAltered']:
+        if card[attribute] != 'Any':
+            filter_settings[attribute] = card[attribute]
+    condition = [shortname for shortname in CARD_CONDITIONS_SHORTNAMES.values()]
+    if card['minCondition'] != 'Poor':
+        condition = condition[:condition.index(CARD_CONDITIONS_SHORTNAMES[card['minCondition']]) + 1]
+    filter_settings['condition'] = condition
+    args_dict['filterSettings'] = json.dumps(filter_settings, separators=('\\,', ':'))
+    args_dict['idProduct'] = product_id
+
+    return args_dict
+
+def _get_load_more_product_id(load_more_btn):
+    onclick_str = load_more_btn['onclick']
+    return re.search(r'\'idProduct\'\:\'(?P<product_id>\d+)\'', onclick_str).group('product_id')
+
+def _get_load_more_request_token(load_more_btn):
+    onclick_str = load_more_btn['onclick']
+    return re.match(r'jcp\(\'(?P<token>[A-Z0-9%]+)\'', onclick_str).group('token')
+
+def load_more_articles(session, funct_result, soup, card, articles_table):
+    # Step 1: Check if there isn't a load more articles button, in this case we stop
+    load_more_btn = soup.find(id='loadMoreButton')
+    if not load_more_btn:
+        return None
+
+    # Step 2: Initialize variables
+    active = True
+    card_curr_game = re.match(CARDMARKET_BASE_URL_REGEX + r'\/\w{2}\/(\w+)', card['url']).group(1)
+    product_id = _get_load_more_product_id(load_more_btn)
+    load_more_args = _get_load_more_args(card, product_id)
+    request_token = _get_load_more_request_token(load_more_btn)
+
+    # Step 3: Retrieve more article until card['maxPrice'] is reached or there is no more article to load
+    while active:
+        # Step 3.A: Get the price of the last card currently displayed
+        last_article = articles_table.contents[-1]
+        last_article_price_str = last_article.find('div', class_='price-container').find('span', class_='text-right').contents[0]
+        last_article_price = Decimal(last_article_price_str.split(' ')[0].replace('.','').replace(',','.'))
+
+        # Step 3.B: Check if we need to load more articles, if yes send a new request to get more articles.
+        if last_article_price <= card['maxPrice']:
+            # Step 3.B.I: Initialize a payload and do a POST request
+            args_base64 = base64.b64encode(bytes(json.dumps(load_more_args, separators=(',', ':')), 'utf-8'))
+            payload = {'args': request_token + args_base64.decode("utf-8")}
+            response_post_load_article = session.post('{}/{}/{}/AjaxAction'.format(CARDMARKET_BASE_URL, CURR_LANG, card_curr_game), data=payload)
+            if response_post_load_article.status_code != 200:
+                # Issue with the request
+                funct_result.addWarning('Failed to load more articles for card page ("{}")'.format(card['title']))
+                # We cannot retrieve more articles, so break the loop
+                break
+
+            # Step 3.B.II: Handle the request result containing the new articles and the new page_index value
+            more_article_soup = BeautifulSoup(response_post_load_article.text, 'html.parser')
+            load_more_args['page'] = int(more_article_soup.find('newpage').contents[0])
+
+            articles_rows_html_str = base64.b64decode(more_article_soup.find('rows').contents[0]).decode("utf-8")
+            articles_table.append(BeautifulSoup(articles_rows_html_str, 'html.parser'))
+            if load_more_args['page'] < 0:
+                # There is no more article available, stop the process
+                active = False
+        else:
+            active = False
+
+def populate_sellers_dict(session, sellers, wantlist, articles_comment=False, continue_on_warning=False):
     funct_result = FunctResult()
 
     wantlist_url = wantlist.pop(0)
@@ -313,55 +391,79 @@ def populate_sellers_dict(session, sellers, wantlist, continue_on_error=False):
             response_get_card_articles = session.get(card['url'], params=params)
             if response_get_card_articles.status_code != 200:
                 # Issue with the request
-                funct_result.addDetailedRequestError('access the card page ("{}")'.format(card['title']), response_get_card_articles)
-                if continue_on_error:
+                funct_result.addDetailedRequestError('access the card page ("{}")'.format(card['title']), response_get_card_articles, continue_on_warning)
+                if continue_on_warning:
                     continue
                 return funct_result
 
             card_full_url = response_get_card_articles.url
 
-            # Step 3: Retrieve the articles table (BeautifulSoup object)
+            # Step 3.A: Retrieve the articles table (BeautifulSoup object)
             soup = BeautifulSoup(response_get_card_articles.text, 'html.parser')
             articles_table = soup.find('div', class_='table-body')
 
+            # Step 3.B: Load more articles if necessary
+            if isinstance(card['maxPrice'], Decimal):
+                load_more_articles(session, funct_result, soup, card, articles_table)
+
             # Step 4: Iterate over articles
-            for article in articles_table.children:
-                # Check if this is a proper article
-                if 'article-row' not in article.attrs['class']:
+            for article_row in articles_table.children:
+                # Step 4.A: Check if this is a proper article
+                if 'article-row' not in article_row.attrs['class']:
                     funct_result.addWarning('No offers found for card ("{}") with parameters: {} {}.'.format(card['title'], params, card['maxPrice']))
                     break
 
-                seller_name_tag = article.find('span', class_='seller-name').find('a')
+                # Step 4.B: Check if the user can purchase the item, ship to is address available from the seller.
+                action_container = article_row.find('div', class_='actions-container')
+                if not action_container.find('div', class_='input-group'):
+                    # Cannot purchase, skip this article_row
+                    continue
+
+                # Step 4.C: Retrieve Seller info
+                seller_name_tag = article_row.find('span', class_='seller-name').find('a')
                 seller_name = seller_name_tag.contents[0]
 
-                # Step 4.A: Skip if we already added an article (of this card) for this seller
+                seller_sales_info_wrapper = article_row.find('span', class_='seller-extended').contents[1]
+                seller_sales_number = re.match(r'^\d+', seller_sales_info_wrapper['title']).group(0)
+
+                # Step 4.D Skip if we already added an article (of this card) for this seller
                 if seller_name in card_sellers_names:
-                    # Skip this article
+                    # Skip this article_row
                     continue
 
                 seller_profile_url = CARDMARKET_BASE_URL + seller_name_tag['href']
 
-                price_str = article.find('div', class_='price-container').find('span', class_='text-right').contents[0]
+                price_str = article_row.find('div', class_='price-container').find('span', class_='text-right').contents[0]
                 price = Decimal(price_str.split(' ')[0].replace('.','').replace(',','.'))
-                # Step 4.B: Check if price isn't above maxPrice
+                # Step 4.E: Check if price isn't above maxPrice
                 if isinstance(card['maxPrice'], Decimal) and price > card['maxPrice']:
                     # The current article price is superior than the max price
                     # we stop iterate over article (article are listed according to price)
                     break
 
-                # Step 4.C: Create the new article
-                article_attributes = article.find('div', class_='product-attributes')
+                # Step 4.F: Create the new article
+                article_attributes = article_row.find('div', class_='product-attributes')
                 article_condition = article_attributes.a.span.contents[0]
                 article_language = article_attributes.find('span', class_='icon')['data-original-title']
-                article = { 'name': card['title'], 'url': card_full_url, 'language': article_language, 'condition': article_condition, 'price': price }
 
-                # Step 4.D: Add this article on the seller key in the dict
+                article_dict = { 'name': card['title'], 'url': card_full_url, 'language': article_language, 'condition': article_condition, 'price': price }
+
+                # Step 4.G: Handle seller comment for the article
+                if articles_comment:
+                    article_comment = ""
+                    article_comment_wrapper = article_row.find('div', class_='product-comments')
+                    if article_comment_wrapper:
+                        article_comment = article_comment_wrapper.find('span', class_='text-truncate').contents[0]
+
+                    article_dict['comment'] = article_comment
+
+                # Step 4.H: Add this article on the seller key in the dict
                 if seller_name in sellers:
-                    sellers[seller_name]['cards'].append(article)
+                    sellers[seller_name]['cards'].append(article_dict)
                 else:
-                    sellers[seller_name] = {'url': seller_profile_url, 'cards': [ article ] }
+                    sellers[seller_name] = {'url': seller_profile_url, 'sales': seller_sales_number, 'cards': [ article_dict ] }
 
-                # Step 4.E: Add seller name in the corresponding list
+                # Step 4.I: Add seller name in the corresponding list
                 card_sellers_names.append(seller_name)
 
     return funct_result
@@ -443,11 +545,15 @@ def build_result_page(wantlists_info, max_sellers, sellers, relevant_sellers):
     seller_index = 0
     for relevant_seller in relevant_sellers:
         index_5_digits_str = '{:05}'.format(seller_index)
-        sellers_html_str += '<div class="seller-item"><a href="{}" id="seller-{}" class="seller-name" target="_blank" rel="noopener noreferrer">{}</a><hr><span class="number-cards">Cards: <b>{}</b></span><span class="total-price">Total: {} €</span><a href="#" onclick="showCardsList(\'{}\'); return false;" class="link-cards-list button">See Cards ></a></div>'.format(sellers[relevant_seller[0]]['url'], index_5_digits_str, relevant_seller[0], str(relevant_seller[1]), str(relevant_seller[2]), index_5_digits_str)
+        sellers_html_str += '<div class="seller-item"><a href="{}" id="seller-{}" class="seller-name" target="_blank" rel="noopener noreferrer">{}</a><span id="seller-{}-sales-number" class="hidden">{}</span><hr><span class="number-cards">Cards: <b>{}</b></span><span class="total-price">Total: {} €</span><a href="#" onclick="showCardsList(\'{}\'); return false;" class="link-cards-list button">See Cards ></a></div>'.format(sellers[relevant_seller[0]]['url'], index_5_digits_str, relevant_seller[0], index_5_digits_str, sellers[relevant_seller[0]]['sales'], str(relevant_seller[1]), str(relevant_seller[2]), index_5_digits_str)
         # Concatenate cards list
         sellers_cards_lists_html_str += '<div id="seller-{}-cards" class="cards-list">'.format(index_5_digits_str)
+
         for card in sellers[relevant_seller[0]]['cards']:
-            sellers_cards_lists_html_str += '<div class="card-item"><span class="card-condition {}">{}</span><span class="card-language {}"></span><a href="{}" class="card-title" target="_blank" rel="noopener noreferrer">{}</a><span class="card-price">{} €</span></div>'.format(card['condition'], card['condition'], card['language'], card['url'], card['name'], card['price'])
+            article_comment = ""
+            if 'comment' in card:
+                article_comment = card['comment']
+            sellers_cards_lists_html_str += '<div class="card-item"><span class="card-condition {}">{}</span><span class="card-language {}"></span><a href="{}" class="card-title" target="_blank" rel="noopener noreferrer">{}</a><span class="card-comment" title="{}">{}</span><span class="card-price">{} €</span></div>'.format(card['condition'], card['condition'], card['language'], card['url'], card['name'], article_comment, article_comment, card['price'])
         sellers_cards_lists_html_str += '</div>'
 
         seller_index += 1
@@ -490,7 +596,7 @@ def build_result_page(wantlists_info, max_sellers, sellers, relevant_sellers):
 
     return funct_result
 
-def cardmarket_wantlist_wizard(credentials, wantlist_urls, continue_on_error, max_sellers):
+def cardmarket_wantlist_wizard(credentials, wantlist_urls, continue_on_warning, max_sellers, articles_comment):
     funct_result = FunctResult()
     LOG.debug('------- Calling the Wizard...\r\n')
 
@@ -512,17 +618,14 @@ def cardmarket_wantlist_wizard(credentials, wantlist_urls, continue_on_error, ma
         LOG.debug('------- Handling the wantlist(s)')
         for wantlist_url in wantlist_urls:
             # Step 2: Retrieve wantlist in JSON
-            retrieve_result = retrieve_wantlist(session, wantlist_url)
+            retrieve_result = retrieve_wantlist(session, wantlist_url, continue_on_warning)
             retrieve_result.logMessages()
+            funct_result.append(retrieve_result)
             if retrieve_result.isWarning():
-                # Empty wantlist
+                # Empty wantlist, or unable to retrieve wantlist but continue_on_warning is True
                 continue
             elif not retrieve_result.isValid():
-                if continue_on_error:
-                    # Skip to next wantlist
-                    continue
                 # Only break, not return so we can still log out of Cardmarket
-                funct_result.append(retrieve_result)
                 break
 
             wantlist = retrieve_result.getResult()
@@ -531,19 +634,20 @@ def cardmarket_wantlist_wizard(credentials, wantlist_urls, continue_on_error, ma
             wantlists_info.append((wantlist_url, wantlist.pop(0)))
 
             # Step 3: Populate the sellers dictionary
-            populate_result = populate_sellers_dict(session, sellers, wantlist, continue_on_error)
+            populate_result = populate_sellers_dict(session, sellers, wantlist, continue_on_warning=continue_on_warning, articles_comment=articles_comment)
             populate_result.logMessages()
 
             funct_result.append(populate_result)
 
         # Step 4: Display most relevant sellers
-        if funct_result.isValid() or continue_on_error:
+        if funct_result.isValid() or (funct_result.isWarning() and continue_on_warning):
             relevant_sellers = determine_relevant_sellers(sellers, max_sellers)
 
-            build_result = build_result_page(wantlists_info, max_sellers, sellers, relevant_sellers)
-            build_result.logMessages()
+            if relevant_sellers:
+                build_result = build_result_page(wantlists_info, max_sellers, sellers, relevant_sellers)
+                build_result.logMessages()
 
-            funct_result.append(populate_result)
+                funct_result.append(populate_result)
 
         # Step 5: Logout from Cardmarket, simply a safety mesure.
         logout_result = cardmarket_log_out(session)
@@ -611,7 +715,7 @@ def check_wantlists_and_max_sellers(wantlist_urls, max_sellers, silently=False):
         if not isinstance(wantlist_url, str):
             funct_result.addError('wantlist url need to be of type string.')
             continue
-        matched = re.match(r'^https:\/\/www\.cardmarket\.com\/(\w{2})\/(\w+)\/Wants\/\d+$', wantlist_url)
+        matched = re.match(CARDMARKET_BASE_URL_REGEX + r'\/(\w{2})\/(\w+)\/Wants\/\d+$', wantlist_url)
         if not matched:
             funct_result.addError('Invalid wantlist url ("{}"), valid pattern is:'.format(wantlist_url))
             funct_result.addError(CARDMARKET_BASE_URL + '/<LANGUAGE_CODE>/<GAME_NAME>/Wants/<wantlist_CODE>')

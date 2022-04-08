@@ -16,7 +16,7 @@
         </header>
         <main id="main-content" role="main">
             <div id="wantlists" class="container">
-                <h3>wantlist(s) you give to the Wizard:</h3>
+                <h3>Wantlist(s) you give to the Wizard:</h3>
                 <div id="wantlist-links" class="grid-items">
                 </div>
             </div>
@@ -30,12 +30,12 @@
             </div>
             <div id="popup-container" class="hidden">
                 <div id="popup-modal">
-                    <div id="popup-header"><a href="#" id="popup-seller-name" class="seller-name" target="_blank" rel="noopener noreferrer"></a><a href="#" onclick="closePopup(); return false;" title="Close the popup.">Close</a></div>
-                    <div id="list-header" class="card-item"><span></span><span></span><span>Card Name</span><span>Price</span></div>
+                    <div id="popup-header"><a href="#" id="popup-seller-name" class="seller-name" target="_blank" rel="noopener noreferrer"></a><span id="popup-seller-sales-number"></span><a class="close-popup" href="#" onclick="closePopup();" title="Close the popup.">Close</a></div>
+                    <div id="list-header" class="card-item"><span></span><span></span><span>Card Name</span><span></span><span>Price</span></div>
                     <div id="cards-list">
                     </div>
                 </div>
-                <a href="#" id="outside-popup" onclick="closePopup(); return false;"></a>
+                <a href="#" id="outside-popup" onclick="closePopup();"></a>
             </div>
         </main>
         <script src="./assets/js/main.js"></script>
