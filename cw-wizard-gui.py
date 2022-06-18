@@ -458,7 +458,7 @@ def set_window_icon(window):
 
     if system_platform == 'Windows':
         # Method that's only work on Windows and cause blank title bar icon on Mac OS
-        window.root.iconbitmap(defaul='assets/images/icon.ico')
+        window.root.iconbitmap(default='assets/images/icon.ico')
     else:
         # Dont know if this method work on Linux but it's the only working one for Mac OS
         icon = tkinter.PhotoImage(file='assets/images/icon.png')
