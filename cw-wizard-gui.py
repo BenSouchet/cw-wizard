@@ -8,8 +8,6 @@ import tkinter.scrolledtext
 from functools import partial
 
 from core import SCRIPT_NAME, VERSION, MAXIMUM_SELLERS
-from core import FunctResult
-from core import init_logger
 from core import create_credentials_file
 from core import get_credentials_from_file
 from core import check_credentials_validity
@@ -77,7 +75,7 @@ def create_label(parent, text, font_style, bg_color):
     return label
 
 def create_button(parent, text, bg_color):
-    button = tkinter.Button(parent, font=GUI_FONT_STYLES['button'], background=bg_color, highlightbackground=bg_color)
+    button = tkinter.Button(parent, font=GUI_FONT_STYLES['button']['font'], background=GUI_FONT_STYLES['button']['background-color'], highlightbackground=bg_color, foreground=GUI_FONT_STYLES['button']['font-color'], disabledforeground=GUI_FONT_STYLES['button']['disabled-font-color'])
     if isinstance(text, tkinter.StringVar):
         button.configure(textvariable=text)
     else:
@@ -127,7 +125,7 @@ def _populate_font_styles():
     GUI_FONT_STYLES['title'] = { 'font': (font_name, 22, tkinter.font.BOLD), 'font-color': '#FFFFFF' }
     GUI_FONT_STYLES['description'] = { 'font': (font_name, 12), 'font-color': '#aaaaaa' }
     GUI_FONT_STYLES['content'] = { 'font': (font_name, 12), 'font-color': '#FFFFFF' }
-    GUI_FONT_STYLES['button'] = { 'font': (font_name, 12), 'font-color': '#aaaaaa' }
+    GUI_FONT_STYLES['button'] = { 'font': (font_name, 12), 'font-color': '#24201d', 'disabled-font-color': '#4a4542', 'background-color': '#feffff' }
 
 def close_window(window):
     window.root.destroy()
@@ -275,11 +273,13 @@ def create_default_widgets(window):
     window.button_next = create_button(frame_buttons, window.button_next_text, window.main_bg_color)
     window.button_next.grid(column=1, row=0, sticky=tkinter.NE)
 
-def set_window_description(window, message, is_error=False):
+def set_window_description(window, message, is_error=False, is_warn=False):
     if is_error:
         window.description_label.configure(foreground='red')
+    elif is_warn:
+        window.description_label.configure(foreground='yellow')
     else:
-        window.description_label.configure(foreground= GUI_FONT_STYLES['description']['font-color'])
+        window.description_label.configure(foreground=GUI_FONT_STYLES['description']['font-color'])
 
     window.description.set(message)
 
@@ -432,7 +432,7 @@ def window_wait_screen(window):
     content_label.configure(wraplength=472)
 
     # Step 3: Set texts according to the current step
-    set_window_description(window, 'Please wait until the process as finish.')
+    set_window_description(window, 'Please wait for the process to finish.')
     if window.step == 'request_credentials':
         window.title.set('Checking credentials...')
         content_msg.set('The program check if we can estasblish a connection to Cardmarket using your credentials, this can takes up to 1 minute.')

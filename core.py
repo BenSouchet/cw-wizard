@@ -11,7 +11,7 @@ from bs4 import BeautifulSoup
 
 SCRIPT_NAME = 'CW Wizard'
 
-VERSION = '1.0.0'
+VERSION = '1.0.1'
 
 EXIT_ERROR_MSG = 'The Wizard encountered issue(s) please check previous logs.\n'
 EXIT_SUCCESS_MSG = 'The Wizard has finish is work, have a great day!\n'
@@ -89,6 +89,9 @@ class FunctResult():
         if result.status == 'warning' and self.status == 'valid':
             self.status = 'warning'
         self.messages = [*self.messages, *result.messages]
+
+    def setResult(self, element):
+        self.result = element
 
     def addResult(self, element):
         if not self.result:
@@ -596,7 +599,7 @@ def build_result_page(wantlists_info, max_sellers, sellers, relevant_sellers):
 
     return funct_result
 
-def cardmarket_wantlist_wizard(credentials, wantlist_urls, continue_on_warning, max_sellers, articles_comment):
+def cardmarket_wantlist_wizard(credentials, wantlist_urls, continue_on_warning, max_sellers, articles_comment=False):
     funct_result = FunctResult()
     LOG.debug('------- Calling the Wizard...\r\n')
 
@@ -647,7 +650,10 @@ def cardmarket_wantlist_wizard(credentials, wantlist_urls, continue_on_warning, 
                 build_result = build_result_page(wantlists_info, max_sellers, sellers, relevant_sellers)
                 build_result.logMessages()
 
-                funct_result.append(populate_result)
+                funct_result.append(build_result)
+                result_path = build_result.getResult()
+                if result_path != None:
+                    funct_result.setResult(result_path)
 
         # Step 5: Logout from Cardmarket, simply a safety mesure.
         logout_result = cardmarket_log_out(session)
