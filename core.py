@@ -11,7 +11,7 @@ from bs4 import BeautifulSoup
 
 SCRIPT_NAME = 'CW Wizard'
 
-VERSION = '1.0.1'
+VERSION = '1.0.2'
 
 EXIT_ERROR_MSG = 'The Wizard encountered issue(s) please check previous logs.\n'
 EXIT_SUCCESS_MSG = 'The Wizard has finish is work, have a great day!\n'
@@ -67,7 +67,7 @@ class FunctResult():
 
     def addDetailedRequestError(self, task, response, as_warning=False):
         status_code = response.status_code
-        message = 'Unable to {}. Request status code "{}":'.format(task, str(status_code))
+        message = 'Unable to {}.\nRequest status code "{}":'.format(task, str(status_code))
 
         # Check if we have more info on the request error
         status_code_info = REQUEST_ERRORS.get(status_code)
@@ -120,8 +120,9 @@ class FunctResult():
     def getMessages(self, message_type='all'):
         messages = []
         for message in self.messages:
-            if message_type != 'all' and message['type'] == message_type:
-                messages.append(message)
+            if message_type == 'all' or (message_type != 'all' and message['type'] == message_type):
+                messages.append(message['content'])
+        return messages
 
 class ColoredFormatter(logging.Formatter):
     """Custom formatter handling color"""
@@ -185,7 +186,12 @@ def cardmarket_log_in(session, credentials, silently=False):
         LOG.debug('  |____ No cookies will be stored/remains at the end.\n')
 
     # Step 1: Get the login page html (to retrieve the login token)
-    response_get_login_page = session.get(CARDMARKET_BASE_URL + '/Login')
+    try:
+        response_get_login_page = session.get(CARDMARKET_BASE_URL + '/Login')
+    except Exception as e:
+        funct_result.addError('Unable to connect to Cardmarket.\nReason: {}'.format(e))
+        return funct_result
+
     if response_get_login_page.status_code != 200:
         # Issue with the request
         funct_result.addDetailedRequestError('access to Cardmarket', response_get_login_page)
@@ -214,7 +220,7 @@ def cardmarket_log_in(session, credentials, silently=False):
     log_in_error_msg = extract_log_in_error_msg(response_post_login)
     if log_in_error_msg:
         # It's most likely an issue with the payload (wrong username and/or password)
-        funct_result.addError('Unable to log-in to Cardmarket. Message: {}.'.format(log_in_error_msg))
+        funct_result.addError('Unable to log-in to Cardmarket.\nMessage: {}.'.format(log_in_error_msg))
         return funct_result
 
     if not silently:
@@ -590,7 +596,7 @@ def build_result_page(wantlists_info, max_sellers, sellers, relevant_sellers):
     # Step 4: Open the result page
     import webbrowser
     try:
-        webbrowser.open(result_path.as_uri())
+        webbrowser.open_new_tab(result_path.as_uri())
     except webbrowser.Error:
         # Since it's not critical at all only display a warning.
         funct_result.addWarning('Failed to automatically open the result page for you.')

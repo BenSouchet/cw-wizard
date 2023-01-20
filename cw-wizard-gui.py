@@ -16,9 +16,10 @@ from core import cardmarket_wantlist_wizard
 
 THREAD_QUEUE = queue.Queue()
 
-GUI_WINDOW_WIDTH = 500
+GUI_WINDOW_WIDTH = 600
 GUI_WINDOW_HEIGHT = 300
 
+GUI_ENTRY_BORDER_WIDTH = 2
 GUI_ENTRY_BORDER_CLR = '#645c53'
 
 GUI_FONT_LIST = ['Trebuchet MS', 'Helvetica', 'Lucida Sans', 'Tahoma', 'Arial']
@@ -88,7 +89,7 @@ def validate_entry_is_integer(new_value):
     return False
 
 def create_entry(parent, variable, bg_color, password=False, width=0, int_only=False):
-    entry = tkinter.Entry(parent, textvariable=variable, background=bg_color, highlightcolor=GUI_ENTRY_BORDER_CLR, highlightbackground=GUI_ENTRY_BORDER_CLR)
+    entry = tkinter.Entry(parent, textvariable=variable, background=bg_color, foreground=GUI_FONT_STYLES['content']['font-color'], insertbackground=GUI_FONT_STYLES['content']['font-color'], highlightcolor=GUI_ENTRY_BORDER_CLR, highlightbackground=GUI_ENTRY_BORDER_CLR, highlightthickness=GUI_ENTRY_BORDER_WIDTH)
     if password:
         entry.configure(show='*')
     if width != 0:
@@ -179,7 +180,7 @@ def credentials_validity_has_finished(params):
 
     if not result.isValid():
         # Couldn't connect, display error message
-        window_request_credentials(params[0], 'Error: connection failed, ensure you enter the right credentials.')
+        window_request_credentials(params[0], '\n'.join(result.getMessages(message_type='error')))
         return False
 
     # Step 3: Store credentials dict in the window object
@@ -313,12 +314,12 @@ def window_request_credentials(window, error_msg=None):
     label_username = create_label(frame_credentials, 'Username', 'content', window.content_bg_color)
     label_username.grid(row=0, column=0, pady=(0, 4), sticky=tkinter.E)
     entry_username = create_entry(frame_credentials, username, window.content_bg_color)
-    entry_username.grid(row=0, column=1, pady=(0, 4), sticky=tkinter.NSEW)
+    entry_username.grid(row=0, column=1, ipadx=4, padx=(4, 0), pady=(0, 4), sticky=tkinter.NSEW)
 
     label_password = create_label(frame_credentials, 'Password', 'content', window.content_bg_color)
     label_password.grid(row=1, column=0, sticky=tkinter.E)
     entry_password = create_entry(frame_credentials, password, window.content_bg_color, password=True)
-    entry_password.grid(row=1, column=1, sticky=tkinter.NSEW)
+    entry_password.grid(row=1, column=1, padx=(4, 0), sticky=tkinter.NSEW)
 
     # Step 4: Add disclaimer message
     text_disclaimer = 'Disclaimer: If you have 2FA activate on your account this script won\'t work.'
