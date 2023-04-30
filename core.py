@@ -217,9 +217,7 @@ def cardmarket_log_in(session, credentials, silently=False):
 
     # Step 1: Get the login page html (to retrieve the login token)
     try:
-        print(session.headers)
-        print(session.cookies)
-        response_get_login_page = session.get(CARDMARKET_BASE_URL + '/Login', cookies=cookie_jar, headers=REQUEST_HEADERS)
+        response_get_login_page = session.get(CARDMARKET_BASE_URL + '/Login')
     except Exception as e:
         funct_result.addError('Unable to connect to Cardmarket.\nReason: {}'.format(e))
         return funct_result
@@ -241,7 +239,6 @@ def cardmarket_log_in(session, credentials, silently=False):
     referal_page_path = '/{}/{}'.format(CURR_LANG, CURR_GAME)
     payload = {'__cmtkn': token, 'referalPage': referal_page_path, 'username': credentials['login'], 'userPassword': credentials['password']}
 
-    print("h")
     # Step 4: Do the log-in POST request to Cardmarket with the payload
     response_post_login = session.post('{}/{}/{}/PostGetAction/User_Login'.format(CARDMARKET_BASE_URL, CURR_LANG, CURR_GAME), data=payload)
     if response_post_login.status_code != 200:
