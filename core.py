@@ -1,17 +1,23 @@
+ # Python shipped packages imports
 import re
 import sys
 import json
 import base64
 import logging
-import requests
 
 from decimal import Decimal
 from pathlib import Path
-from bs4 import BeautifulSoup
 
+# Dependencies imports
+import requests
+from bs4 import BeautifulSoup
+import browser_cookie3
+
+
+# Global variables
 SCRIPT_NAME = 'CW Wizard'
 
-VERSION = '1.0.2'
+VERSION = '1.0.3'
 
 EXIT_ERROR_MSG = 'The Wizard encountered issue(s) please check previous logs.\n'
 EXIT_SUCCESS_MSG = 'The Wizard has finish is work, have a great day!\n'
@@ -20,7 +26,8 @@ EXIT_SUCCESS_MSG = 'The Wizard has finish is work, have a great day!\n'
 CURR_LANG = 'en'
 CURR_GAME = 'Magic'
 
-CARDMARKET_BASE_URL = 'https://www.cardmarket.com'
+CARDMARKET_TOP_DOMAIN = '.cardmarket.com'
+CARDMARKET_BASE_URL = 'https://www' + CARDMARKET_TOP_DOMAIN
 CARDMARKET_BASE_URL_REGEX = r'^https:\/\/www\.cardmarket\.com'
 
 # This value can be overwriten via script arguments or via GUI
@@ -49,6 +56,24 @@ REQUEST_ERRORS  = { 307: ['Temporary Redirect', 'Particular requests can deliver
                     429: ['Too Many Requests', 'Our API has the following request limits which reset every midnight at 12am (0:00) CET/CEST: - Dedicated App (private users): 5.000 | - Dedicated App (commercial users): 100.000 | - Dedicated App (powerseller users): 1.000.000 | - Widget and 3rd-Party Apps don\'t have any request limits. If your has a request limit, additional response headers are sent by the API: - X-Request-Limit-Max, which contains your request limit, - X-Request-Limit-Count, which contains the actual number of requests you made after the last request limit reset. Once your request limit is reached the API will answer with a 429 Too Many Requests until the next request limit reset.']}
 
 CREDENTIALS_PATH = Path.cwd().joinpath('credentials.json')
+
+REQUEST_HEADERS = {
+    "authority": "cardmarket.com",
+    "accept": "text/html,application/xhtml+xml,application/xml;q=0.9,image/avif,image/webp,image/apng,*/*;q=0.8,application/signed-exchange;v=b3;q=0.7",
+    "accept-language": "fr,en-US;q=0.9,en;q=0.8",
+    "cache-control": "max-age=0",
+    "dnt": "1",
+    "sec-ch-ua": '"Chromium";v="112", "Google Chrome";v="112", "Not:A-Brand";v="99"',
+    "sec-ch-ua-mobile": "?0",
+    "sec-ch-ua-platform": '"macOS"',
+    "sec-fetch-dest": "document",
+    "sec-fetch-mode": "navigate",
+    "sec-fetch-site": "none",
+    "sec-fetch-user": "?1",
+    "Upgrade-Insecure-Requests": "1",
+    "User-Agent": "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/112.0.0.0 Safari/537.36"
+}
+
 
 class FunctResult():
     def __init__(self):
@@ -124,6 +149,7 @@ class FunctResult():
                 messages.append(message['content'])
         return messages
 
+
 class ColoredFormatter(logging.Formatter):
     """Custom formatter handling color"""
     cyan = '\x1b[36;20m'
@@ -147,6 +173,7 @@ class ColoredFormatter(logging.Formatter):
         formatter = logging.Formatter(log_format)
         return formatter.format(record)
 
+
 def init_logger():
     """Initialize script logger"""
 
@@ -162,7 +189,9 @@ def init_logger():
 
     return logger
 
+
 LOG = init_logger()
+
 
 def extract_log_in_error_msg(response):
     error_msg = ''
@@ -177,6 +206,7 @@ def extract_log_in_error_msg(response):
 
     return error_msg
 
+
 def cardmarket_log_in(session, credentials, silently=False):
     funct_result = FunctResult()
 
@@ -187,7 +217,9 @@ def cardmarket_log_in(session, credentials, silently=False):
 
     # Step 1: Get the login page html (to retrieve the login token)
     try:
-        response_get_login_page = session.get(CARDMARKET_BASE_URL + '/Login')
+        print(session.headers)
+        print(session.cookies)
+        response_get_login_page = session.get(CARDMARKET_BASE_URL + '/Login', cookies=cookie_jar, headers=REQUEST_HEADERS)
     except Exception as e:
         funct_result.addError('Unable to connect to Cardmarket.\nReason: {}'.format(e))
         return funct_result
@@ -209,14 +241,15 @@ def cardmarket_log_in(session, credentials, silently=False):
     referal_page_path = '/{}/{}'.format(CURR_LANG, CURR_GAME)
     payload = {'__cmtkn': token, 'referalPage': referal_page_path, 'username': credentials['login'], 'userPassword': credentials['password']}
 
+    print("h")
     # Step 4: Do the log-in POST request to Cardmarket with the payload
     response_post_login = session.post('{}/{}/{}/PostGetAction/User_Login'.format(CARDMARKET_BASE_URL, CURR_LANG, CURR_GAME), data=payload)
     if response_post_login.status_code != 200:
         # Issue with the request
-        funct_result.addDetailedRequestError('log-in to Cardmarket', response_get_login_page)
+        funct_result.addDetailedRequestError('log-in to Cardmarket', response_post_login)
         return funct_result
 
-    # Step 5: Check in the response HTML if there is a log-in rror
+    # Step 5: Check in the response HTML if there is a log-in error
     log_in_error_msg = extract_log_in_error_msg(response_post_login)
     if log_in_error_msg:
         # It's most likely an issue with the payload (wrong username and/or password)
@@ -227,6 +260,7 @@ def cardmarket_log_in(session, credentials, silently=False):
         LOG.info('Successfully logged in !\n')
 
     return funct_result
+
 
 def cardmarket_log_out(session, silently=False):
     funct_result = FunctResult()
@@ -244,6 +278,7 @@ def cardmarket_log_out(session, silently=False):
         LOG.info('Successfully logout!')
 
     return funct_result
+
 
 def retrieve_wantlist(session, wantlist_url, continue_on_warning=False):
     funct_result = FunctResult()
@@ -306,6 +341,7 @@ def retrieve_wantlist(session, wantlist_url, continue_on_warning=False):
     funct_result.addResult(wantlist)
     return funct_result
 
+
 def _get_load_more_args(card, product_id):
     args_dict = { 'page': '0' }
     filter_settings = {}
@@ -322,13 +358,16 @@ def _get_load_more_args(card, product_id):
 
     return args_dict
 
+
 def _get_load_more_product_id(load_more_btn):
     onclick_str = load_more_btn['onclick']
     return re.search(r'\'idProduct\'\:\'(?P<product_id>\d+)\'', onclick_str).group('product_id')
 
+
 def _get_load_more_request_token(load_more_btn):
     onclick_str = load_more_btn['onclick']
     return re.match(r'jcp\(\'(?P<token>[A-Z0-9%]+)\'', onclick_str).group('token')
+
 
 def load_more_articles(session, funct_result, soup, card, articles_table):
     # Step 1: Check if there isn't a load more articles button, in this case we stop
@@ -373,6 +412,7 @@ def load_more_articles(session, funct_result, soup, card, articles_table):
                 active = False
         else:
             active = False
+
 
 def populate_sellers_dict(session, sellers, wantlist, articles_comment=False, continue_on_warning=False):
     funct_result = FunctResult()
@@ -477,6 +517,7 @@ def populate_sellers_dict(session, sellers, wantlist, articles_comment=False, co
 
     return funct_result
 
+
 def determine_relevant_sellers(sellers, max_sellers):
     LOG.debug('------- The Wizard is sorting sellers to find relevant ones...')
 
@@ -499,6 +540,7 @@ def determine_relevant_sellers(sellers, max_sellers):
 
     return relevant_sellers
 
+
 def delete_previous_result_page(path_file):
     funct_result = FunctResult()
 
@@ -514,6 +556,7 @@ def delete_previous_result_page(path_file):
             funct_result.addError('Failed to delete "{}". Reason: {}'.format(path_file, e))
             return funct_result
     return funct_result
+
 
 def build_result_page(wantlists_info, max_sellers, sellers, relevant_sellers):
     funct_result = FunctResult()
@@ -605,6 +648,7 @@ def build_result_page(wantlists_info, max_sellers, sellers, relevant_sellers):
 
     return funct_result
 
+
 def cardmarket_wantlist_wizard(credentials, wantlist_urls, continue_on_warning, max_sellers, articles_comment=False):
     funct_result = FunctResult()
     LOG.debug('------- Calling the Wizard...\r\n')
@@ -615,12 +659,18 @@ def cardmarket_wantlist_wizard(credentials, wantlist_urls, continue_on_warning, 
 
     # Step 1: Create a web session (to be able to stay connected)
     with requests.Session() as session:
+        # Retrieve Cardmarket Cookies
+        cookie_jar = browser_cookie3.chrome(domain_name=CARDMARKET_TOP_DOMAIN)
+        # Setting cookies and headers to bypass / skip Cloudflare protection
+        session.cookies = cookie_jar
+        session.headers.update(REQUEST_HEADERS)
+
         # Step 2: Log-in to Cardmarket
         funct_result = cardmarket_log_in(session, credentials)
         funct_result.logMessages()
         if not funct_result.isValid():
             # FATAL error we cannot perform anything without being log-in
-            return False
+            return funct_result
 
         sellers = {}
         wantlists_info = []
@@ -673,6 +723,7 @@ def cardmarket_wantlist_wizard(credentials, wantlist_urls, continue_on_warning, 
 
     return funct_result
 
+
 def get_credentials_from_file():
     funct_result = FunctResult()
 
@@ -711,6 +762,7 @@ def get_credentials_from_file():
 
     funct_result.addResult(credentials)
     return funct_result
+
 
 def check_wantlists_and_max_sellers(wantlist_urls, max_sellers, silently=False):
     funct_result = FunctResult()
@@ -758,6 +810,7 @@ def check_wantlists_and_max_sellers(wantlist_urls, max_sellers, silently=False):
 
     return funct_result
 
+
 def create_credentials_file(credentials, silently=False):
     # Normaly we write to file only if we checked the credentials so :
     # Step 1: Add a special key to skip checking the credentials in the future
@@ -771,6 +824,7 @@ def create_credentials_file(credentials, silently=False):
         LOG.debug('Credentials file successfully created ("{}")'.format(CREDENTIALS_PATH))
 
     return True
+
 
 def check_credentials_validity(credentials, silently=False):
     funct_result = FunctResult()
