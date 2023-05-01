@@ -284,6 +284,47 @@ def cardmarket_log_out(session, silently=False):
     return funct_result
 
 
+def rename_dict_key(dictionnary, old_key_name, new_key_name):
+    # No operation performed iff key not in dictionnary
+    if old_key_name in dictionnary:
+        dictionnary[new_key_name] = dictionnary[old_key_name]
+        del dictionnary[old_key_name]
+
+    return dictionnary
+
+
+def get_wantlist_columns_correlation_table(wantlist_table_head):
+    correlation_table = {}
+    for index, th_column in enumerate(wantlist_table_head.find_all('th')):
+        if th_column.has_attr('class'):
+            column_name = th_column['class'][0]
+            if column_name == 'min-size':
+                # Special case: This is a boolean column, let's find the correct name
+                # Get span title in title format (capitalize first letter of every words)
+                column_name = th_column.find('span')['title'].title()
+                # Removing all non alphanumerical characters
+                column_name = ''.join(e for e in column_name if e.isalnum())
+                # Lastly add a prefix, so we know it's a True/False column
+                column_name = 'is' + column_name
+            # Add to correlation dict
+            correlation_table[column_name] = index
+
+    # Rename some keys to match requirements
+    correlation_table = rename_dict_key(correlation_table, old_key_name='condition', new_key_name='minCondition')
+    correlation_table = rename_dict_key(correlation_table, old_key_name='buyPrice', new_key_name='maxPrice')
+    correlation_table = rename_dict_key(correlation_table, old_key_name='isReverseHolo', new_key_name='isReverse')
+    correlation_table = rename_dict_key(correlation_table, old_key_name='isFirstEdition', new_key_name='isFirstEd')
+
+    # Remove useless entries
+    # (not checking first if they exists, since they always SHOULD exists, common columns)
+    del correlation_table['select']
+    del correlation_table['preview']
+    del correlation_table['mailAlert']
+    del correlation_table['action']
+
+    return correlation_table
+
+
 def retrieve_wantlist(session, wantlist_url, continue_on_warning=False):
     funct_result = FunctResult()
 
@@ -311,8 +352,10 @@ def retrieve_wantlist(session, wantlist_url, continue_on_warning=False):
         return funct_result
 
     wantlist_table = wantlist_section.table.tbody
-    column_index = { 'name': 3, 'languages': 5, 'minCondition': 6, 'isReverse': 7,
-                    'isSigned': 8, 'isFirstEd': 9, 'isAltered': 10,'maxPrice': 11 }
+    # Get all the columns (attributes) available for this wantlist
+    # Create a correlation table: column name -> index in article row
+    wantlist_table_head = wantlist_section.table.thead
+    column_correlation_table = get_wantlist_columns_correlation_table(wantlist_table_head)
 
     # Step 5: Convert the wantlist table to python list
     card_count = len(wantlist_table.contents)
@@ -322,19 +365,24 @@ def retrieve_wantlist(session, wantlist_url, continue_on_warning=False):
         card = {}
 
         # Step 5.A: Retrieve and add attributes to the card dict
-        name_link_tag = row.contents[column_index['name']].a
+        name_link_tag = row.contents[column_correlation_table['name']].a
         card['url'] = CARDMARKET_BASE_URL + name_link_tag['href'].split('?')[0]
         card['title'] = name_link_tag.contents[0]
 
         card['languages'] = []
-        languages_link_tags = row.contents[column_index['languages']].find_all('a')
+        languages_link_tags = row.contents[column_correlation_table['languages']].find_all('a')
         for languages_link_tag in languages_link_tags:
             card['languages'].append(languages_link_tag.span['data-original-title'])
 
-        for attribute in ['minCondition', 'isReverse', 'isSigned', 'isFirstEd', 'isAltered']:
-            card[attribute] = row.contents[column_index[attribute]].find('span', class_='sr-only').contents[0]
+        card['quantity'] = int(row.contents[column_correlation_table['amount']].string)
 
-        card['maxPrice'] = row.contents[column_index['maxPrice']].span.contents[0]
+        for attribute_name, column_index in column_correlation_table.items():
+            if attribute_name not in ['amount', 'name', 'languages', 'maxPrice']:
+                span_child = row.contents[column_index].find('span', class_='sr-only')
+                if span_child is not None:
+                    card[attribute_name] = span_child.contents[0]
+
+        card['maxPrice'] = row.contents[column_correlation_table['maxPrice']].span.contents[0]
         # If maxPrice is a value we convert it into a Decimal
         if card['maxPrice'] != 'N/A':
             card['maxPrice'] = Decimal(card['maxPrice'].split(' ')[0].replace('.','').replace(',','.'))
@@ -350,8 +398,9 @@ def _get_load_more_args(card, product_id):
     args_dict = { 'page': '0' }
     filter_settings = {}
     filter_settings['idLanguage'] = {str(CARD_LANGUAGES[language]): CARD_LANGUAGES[language] for language in card['languages']}
+    # The names of attributes in the list below are the ones accepted as filters by Cardmarket
     for attribute in ['isReverse', 'isSigned', 'isFirstEd', 'isAltered']:
-        if card[attribute] != 'Any':
+        if attribute in card and card[attribute] != 'Any':
             filter_settings[attribute] = card[attribute]
     condition = [shortname for shortname in CARD_CONDITIONS_SHORTNAMES.values()]
     if card['minCondition'] != 'Poor':
