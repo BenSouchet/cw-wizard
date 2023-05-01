@@ -311,8 +311,21 @@ def retrieve_wantlist(session, wantlist_url, continue_on_warning=False):
         return funct_result
 
     wantlist_table = wantlist_section.table.tbody
-    column_index = { 'name': 3, 'languages': 5, 'minCondition': 6, 'isReverse': 7,
-                    'isSigned': 8, 'isFirstEd': 9, 'isAltered': 10,'maxPrice': 11 }
+    wantlist_table_head = wantlist_section.table.thead
+    column_index = {
+        key: wantlist_table_head.index(th_element) if th_element is not None else None
+        for key, th_element in {
+            'name': wantlist_table_head.find('th', class_='name'),
+            'languages': wantlist_table_head.find('th', class_='languages'),
+            'minCondition': wantlist_table_head.find('th', class_='condition'),
+            'isReverse': wantlist_table_head.find('span', attrs={'title': 'Reverse Holo?'}).parent if CURR_GAME == 'Pokemon' else None,
+            'isSigned': wantlist_table_head.find('span', attrs={'title': 'Signed?'}).parent,
+            'isFirstEd': wantlist_table_head.find('span', attrs={'title': 'First Edition?'}).parent,
+            'isAltered': wantlist_table_head.find('span', attrs={'title': 'Altered?'}).parent,
+            'maxPrice': wantlist_table_head.find('th', class_='buyPrice'),
+        }.items()
+    }
+
 
     # Step 5: Convert the wantlist table to python list
     card_count = len(wantlist_table.contents)
@@ -332,7 +345,10 @@ def retrieve_wantlist(session, wantlist_url, continue_on_warning=False):
             card['languages'].append(languages_link_tag.span['data-original-title'])
 
         for attribute in ['minCondition', 'isReverse', 'isSigned', 'isFirstEd', 'isAltered']:
-            card[attribute] = row.contents[column_index[attribute]].find('span', class_='sr-only').contents[0]
+            if column_index[attribute] is None:
+                card[attribute] = 'Any'
+            else:
+                card[attribute] = row.contents[column_index[attribute]].find('span', class_='sr-only').contents[0]
 
         card['maxPrice'] = row.contents[column_index['maxPrice']].span.contents[0]
         # If maxPrice is a value we convert it into a Decimal
