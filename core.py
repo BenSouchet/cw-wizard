@@ -486,7 +486,7 @@ def populate_sellers_dict(session, sellers, wantlist, articles_comment=False, co
             params['language'] = CARD_LANGUAGES[card_language]
             params['minCondition'] = CARD_CONDITIONS[card['minCondition']]
             for attribute in ['isReverse', 'isSigned', 'isFirstEd', 'isAltered']:
-                if card[attribute] != 'Any':
+                if attribute in card and card[attribute] != 'Any':
                     params[attribute] = card[attribute]
 
             # Step 2: Get the card page
