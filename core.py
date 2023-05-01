@@ -82,6 +82,9 @@ REQUEST_HEADERS = {
 }
 
 
+COMPATIBLE_BROWSERS = ["chrome", "firefox", "opera", "opera_gx", "edge", "chromium", "brave", "vivaldi", "safari"]
+
+
 class FunctResult():
     def __init__(self):
         self.status = 'valid'
@@ -702,7 +705,20 @@ def build_result_page(wantlists_info, max_sellers, sellers, relevant_sellers):
     return funct_result
 
 
-def cardmarket_wantlist_wizard(credentials, wantlist_urls, continue_on_warning, max_sellers, articles_comment=False):
+def get_cardmarket_cookies(browser_name):
+    # Caution: browser_name should be in snake case
+    # Retrieve Cardmarket Cookies
+    if browser_name is not None:
+        funct_retrieve_cookies = getattr(browser_cookie3, browser_name, None)
+        if funct_retrieve_cookies is not None:
+            return funct_retrieve_cookies(domain_name=CARDMARKET_TOP_DOMAIN)
+
+    # Fallback get Cardmarket cookies in every browsers installed
+    # (can fail for example if users don't give access rights for Safari cookies)
+    return browser_cookie3.load(domain_name=CARDMARKET_TOP_DOMAIN)
+
+
+def cardmarket_wantlist_wizard(browser_name, credentials, wantlist_urls, continue_on_warning, max_sellers, articles_comment=False):
     funct_result = FunctResult()
     LOG.debug('------- Calling the Wizard...\r\n')
 
@@ -712,10 +728,8 @@ def cardmarket_wantlist_wizard(credentials, wantlist_urls, continue_on_warning, 
 
     # Step 1: Create a web session (to be able to stay connected)
     with requests.Session() as session:
-        # Retrieve Cardmarket Cookies
-        cookie_jar = browser_cookie3.chrome(domain_name=CARDMARKET_TOP_DOMAIN)
         # Setting cookies and headers to bypass / skip Cloudflare protection
-        session.cookies = cookie_jar
+        session.cookies = get_cardmarket_cookies(browser_name)
         session.headers.update(REQUEST_HEADERS)
 
         # Step 2: Log-in to Cardmarket
@@ -879,11 +893,15 @@ def create_credentials_file(credentials, silently=False):
     return True
 
 
-def check_credentials_validity(credentials, silently=False):
+def check_credentials_validity(browser_name, credentials, silently=False):
     funct_result = FunctResult()
 
      # Step 1: Create a web session
     with requests.Session() as session:
+        # Setting cookies and headers to bypass / skip Cloudflare protection
+        session.cookies = get_cardmarket_cookies(browser_name)
+        session.headers.update(REQUEST_HEADERS)
+
         # Step 2: Log-in to Cardmarket
         funct_result = cardmarket_log_in(session, credentials, silently=silently)
         if not funct_result.isValid():
@@ -896,4 +914,35 @@ def check_credentials_validity(credentials, silently=False):
     create_credentials_file(credentials, silently=True)
 
     funct_result.addResult(credentials)
+    return funct_result
+
+
+def get_formatted_browser_name(browser_name):
+    funct_result = FunctResult()
+    original_browser_name = browser_name
+
+    # Properly format the browser name, than check validity
+    # First put name in lowercase and remove leading and trailing space(s)
+    browser_name = browser_name.lower().strip()
+    # Replace remaining space(s) to underscore(s)
+    browser_name = browser_name.replace(' ', '_')
+    # Remove non alphanumarical characters (preserve underscore(s))
+    browser_name = ''.join(c for c in browser_name if c.isalnum() or c == '_')
+
+    # Remove company name if present
+    if browser_name.startswith('google_'):
+        browser_name = 'chrome'
+    elif browser_name.startswith('mozilla_'):
+        browser_name = 'firefox'
+    elif browser_name.startswith('microsoft_'):
+        browser_name = 'edge'
+    elif browser_name.startswith('apple_'):
+        browser_name = 'safari'
+
+    if browser_name not in COMPATIBLE_BROWSERS:
+        funct_result.addError("Browser name '{}' not compatible or unrecognized.".format(original_browser_name))
+
+    # Set the reformatted browser_name
+    funct_result.setResult(browser_name)
+
     return funct_result

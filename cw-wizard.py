@@ -5,6 +5,7 @@ from core import FunctResult
 from core import create_credentials_file
 from core import get_credentials_from_file
 from core import check_credentials_validity
+from core import get_formatted_browser_name
 from core import check_wantlists_and_max_sellers
 from core import cardmarket_wantlist_wizard
 
@@ -43,11 +44,19 @@ def get_credentials_user_inputs():
 
     return funct_result
 
-def main(wantlist_urls, continue_on_warning, max_sellers, articles_comment):
+def main(browser_name, wantlist_urls, continue_on_warning, max_sellers, articles_comment):
     """Entry point of the CW Wizard script"""
 
     # Step 1: Check input parameters before calling the Wizard
     #         Also retrieve the language and the game name
+    result = get_formatted_browser_name(browser_name)
+    result.logMessages()
+    if not result.isValid():
+        return LOG.error(EXIT_ERROR_MSG)
+
+    # Set the reformatted browser_name
+    browser_name = result.getResult()
+
     result = check_wantlists_and_max_sellers(wantlist_urls, max_sellers)
     result.logMessages()
     if not result.isValid():
@@ -62,9 +71,9 @@ def main(wantlist_urls, continue_on_warning, max_sellers, articles_comment):
         # Check the credentials are valid
         credentials = result.getResult()
         if 'skip-check' not in credentials:
-            result = check_credentials_validity(credentials, silently=True)
+            result = check_credentials_validity(browser_name, credentials, silently=True)
             result.logMessages()
-        # Since we have maybe check the validity second check to the result
+        # Since we have maybe check the validity, perform a second check on the result object
         if result.isValid():
             credentials = result.getResult()
 
@@ -80,7 +89,7 @@ def main(wantlist_urls, continue_on_warning, max_sellers, articles_comment):
         return LOG.error(EXIT_ERROR_MSG)
 
     # Step 3: Call the Wizard
-    result = cardmarket_wantlist_wizard(credentials, wantlist_urls, continue_on_warning=continue_on_warning, max_sellers=max_sellers, articles_comment=articles_comment)
+    result = cardmarket_wantlist_wizard(browser_name, credentials, wantlist_urls, continue_on_warning=continue_on_warning, max_sellers=max_sellers, articles_comment=articles_comment)
     result.logMessages()
 
     if not result.isValid():
@@ -93,6 +102,7 @@ if __name__ == '__main__':
     import argparse
     parser = argparse.ArgumentParser(prog=SCRIPT_NAME, description='{} v{}, Find the best bundles for the cards in your wantlist(s).'.format(SCRIPT_NAME, VERSION))
     parser.add_argument('-v', '--version', action='version', version='%(prog)s '+ VERSION)
+    parser.add_argument('-b', '--browser_name', type=str, required=True, help='Specify the browser name you used to open the Cardmarket tab (needed to bypass Cloudflare protection), accepted values are [chrome, firefox, opera, opera_gx, edge, chromium, brave, vivaldi, safari].')
     parser.add_argument('-u', '--wantlist-urls', nargs='+', required=True, type=str, action='extend', help='wantlist url(s) (if you pass multiples whislists, separate them with spaces)')
     parser.add_argument('-m', '--max-sellers', type=int, default=MAXIMUM_SELLERS, help='maximum number of sellers to display on the result page')
     parser.add_argument('-w', '--continue-on-warning', action='store_true', help='if specified the script will continue on non fatal errors')
@@ -100,4 +110,4 @@ if __name__ == '__main__':
 
     arguments = parser.parse_args()
 
-    main(arguments.wantlist_urls, arguments.continue_on_warning, arguments.max_sellers, arguments.articles_comment)
+    main(arguments.browser_name, arguments.wantlist_urls, arguments.continue_on_warning, arguments.max_sellers, arguments.articles_comment)
