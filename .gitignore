@@ -17,6 +17,7 @@ Thumbs.db
 .idea
 .vscode
 *.pyc
+__pycache__
 # Generate Result Page
 result.html
 # Credentials File

@@ -30,25 +30,29 @@ Now you have two options: the **script with a User Interface** *(like a true sof
 
 ### Starting the Script with a User Interface
 1. In this case you need to make sure that **tkinter** is available on your computer ([check here](https://github.com/BenSouchet/cw-wizard/blob/main/REQUIREMENTS.md#optional-needed-for-the-user-interface-script)).
-2. execute this command in your terminal:
+2. Open on your favorite browser one Cardmarket tab (just one and don't log-in).
+3. Execute this command in your terminal:
 ```shell
 > python3 cw-wizard-gui.py
 ```
-3. Then simply follow the steps in the interface that popped up.
+4. Then simply follow the steps in the interface that popped up.
 
 ### Starting the Command Line Script
-1. Check the script help (to see available parameters):
+1. Open on your favorite browser one Cardmarket tab (just one and don't log-in)
+2. Check the script help (to see available parameters):
 ```shell
 > python3 cw-wizard.py -h
 ```
 ```text
-usage: CW Wizard [-h] [-v] -u WANTLIST_URLS [WANTLIST_URLS ...] [-m MAX_SELLERS] [-w] [-c]
+usage: CW Wizard [-h] [-v] -b BROWSER_NAME -u WANTLIST_URLS [WANTLIST_URLS ...] [-m MAX_SELLERS] [-w] [-c]
 
-CW Wizard, Find the best bundles for the cards in your wantlist(s).
+CW Wizard v1.0.3, Find the best bundles for the cards in your wantlist(s).
 
-optional arguments:
+options:
   -h, --help            show this help message and exit
   -v, --version         show program's version number and exit
+  -b BROWSER_NAME, --browser_name BROWSER_NAME
+                        Specify the browser name you used to open the Cardmarket tab (needed to bypass Cloudflare protection), accepted values are [chrome, firefox, opera, opera_gx, edge, chromium, brave, vivaldi, safari].
   -u WANTLIST_URLS [WANTLIST_URLS ...], --wantlist-urls WANTLIST_URLS [WANTLIST_URLS ...]
                         wantlist url(s) (if you pass multiples whislists, separate them with spaces)
   -m MAX_SELLERS, --max-sellers MAX_SELLERS
@@ -61,35 +65,43 @@ optional arguments:
 
 As you can see, you can call the script with one or more wantlist urls, and there is optional arguments available ([info on script arguments](https://github.com/BenSouchet/cw-wizard/blob/main/README.md#script-arguments)).
 
-2. A basic example would be:
+3. A basic example would be:
 ```shell
-> python3 cw-wizard.py -w https://www.cardmarket.com/en/Pokemon/Wants/10876807 -m 10
+> python3 cw-wizard.py -b chrome -w https://www.cardmarket.com/en/Pokemon/Wants/10876807 -m 10
 ```
 Example with multiple wantlists:
 ```shell
-> python3 cw-wizard.py -w https://www.cardmarket.com/en/Pokemon/Wants/10876807 https://www.cardmarket.com/en/Pokemon/Wants/10841970
+> python3 cw-wizard.py -b chrome -w https://www.cardmarket.com/en/Pokemon/Wants/10876807 https://www.cardmarket.com/en/Pokemon/Wants/10841970
 ```
-3. If it's the first time you start the script your Cardmarket credentials will be asked to create a `credentials.json` file at the root of the project directory. For info on why credentials are required [read this section](https://github.com/BenSouchet/cw-wizard/edit/main/README.md#security-and-authentification).
+4. If it's the first time you start the script your Cardmarket credentials will be asked to create a `credentials.json` file at the root of the project directory. For info on why credentials are required [read this section](https://github.com/BenSouchet/cw-wizard/edit/main/README.md#security-and-authentification).
 <img width="598" alt="credentials_dialog" src="https://user-images.githubusercontent.com/17025808/159022712-b95ef3f5-0da6-4547-8f94-d49c0a4582ee.png">
 
-4. It's all, if everything goes well a result HTML page will open on your default web browser, otherwise check the terminal to see the error message(s).
+5. It's all, if everything goes well a result HTML page will open on your default web browser, otherwise check the terminal to see the error message(s).
 
 ### Script Arguments
 With the command line version of the script you can use the following arguments:
 
 | Argument Name | Description | Required |
 |:-------------:|:-----------:|:--------:|
-| `-v` *OR* `--version` | Display the version number of the script in your terminal | No |
-| `-h` *OR* `--help` | Display the help in your terminal | No |
+| `-v` *OR* `--version` | Display the version number of the script in your terminal. | No |
+| `-h` *OR* `--help` | Display the help in your terminal. | No |
+| `-b` *OR* `--browser-name` | Specify the browser you used to open a Cardmarket tab. | **Yes** |
 | `-u` *OR* `--wantlist-urls` | One or more Cardmarket wantlists (wantlists) urls.<br />If you add multiple urls simply put a space between then (not a comma). | **Yes** |
 | `-m` *OR* `--max-sellers` | The maximum number of sellers to display on the result page.<br />Default value `20`. `0` means display all. | No |
 | `-w` *OR* `--continue-on-warning` | If specified the script won't stop on non fatal requests errors. | No |
 | `-c` *OR* `--articles-comment` |If specified the script will retrieve and add sellers comments to the result page. | No |
 
 ## Version
-Current version is `1.0.0`, you can download this latest release on the Releases category (on the sidebar), from [this page](https://github.com/BenSouchet/cw-wizard/releases) or `git clone` the `main` branch of the repository.
+Current version is `1.0.3`, you can download this latest release on the Releases category (on the sidebar), from [this page](https://github.com/BenSouchet/cw-wizard/releases) or `git clone` the `main` branch of the repository.
 
-### Latest Version Changelog
+## Changelog
+
+### 1.0.3
+- Bypassing newly added Cloudflare protection by using user cookies (thanks to package **Browser Cookie 3**).
+- Apply platform specific user agent header ( #4 by @michasng )
+- Fix attributes issue due to `isReverse` not always available. ( #5 )
+
+### 1.0.1
 - Handle more than the 50 first articles for the card pages (see function [`load_more_articles()`]()).
 - Skip article and sellers that doesn't ship to your address.
 - Extract and display sellers comments for articles (if script argument `-c` is specified).
@@ -127,6 +139,9 @@ If in the future, this project inspire others to create there own tools this wou
 - [CardmarketToCSV](https://github.com/decdod/CardmarketToCSV) by [ddkod](https://github.com/decdod)
 - [Python Requests Documentation](https://docs.python-requests.org/en/latest/user/quickstart/)
 - [Tillana Font](https://fonts.google.com/specimen/Tillana) by the [Indian Type Foundry](https://www.indiantypefoundry.com/) (License: [Open Font License](https://scripts.sil.org/cms/scripts/page.php?site_id=nrsi&id=OFL))
+
+## Contibutors
+- [michasng](https://github.com/michasng)
 
 ## Author & maintainer
 CW Wizard has been created and is currently maintained by [Ben Souchet](https://github.com/BenSouchet).

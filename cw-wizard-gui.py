@@ -12,6 +12,7 @@ from core import create_credentials_file
 from core import get_credentials_from_file
 from core import check_credentials_validity
 from core import check_wantlists_and_max_sellers
+from core import get_formatted_browser_name
 from core import cardmarket_wantlist_wizard
 
 THREAD_QUEUE = queue.Queue()
@@ -43,6 +44,7 @@ class guiWindow:
     self.step = ''
     self.credentials = None
 
+
 def center_window(window):
     # Always do an update of the idle tasks to get the most acurate size & position values
     window.root.update_idletasks()
@@ -67,6 +69,7 @@ def center_window(window):
     # if the window is minimized restore it
     window.root.deiconify()
 
+
 def create_label(parent, text, font_style, bg_color):
     label = tkinter.Label(parent, font=GUI_FONT_STYLES[font_style]['font'], background=bg_color, foreground=GUI_FONT_STYLES[font_style]['font-color'])
     if isinstance(text, tkinter.StringVar):
@@ -74,6 +77,7 @@ def create_label(parent, text, font_style, bg_color):
     else:
         label.configure(text=text)
     return label
+
 
 def create_button(parent, text, bg_color):
     button = tkinter.Button(parent, font=GUI_FONT_STYLES['button']['font'], background=GUI_FONT_STYLES['button']['background-color'], highlightbackground=bg_color, foreground=GUI_FONT_STYLES['button']['font-color'], disabledforeground=GUI_FONT_STYLES['button']['disabled-font-color'])
@@ -83,10 +87,12 @@ def create_button(parent, text, bg_color):
         button.configure(text=text)
     return button
 
+
 def validate_entry_is_integer(new_value):
     if str.isdigit(new_value) or new_value == '':
         return True
     return False
+
 
 def create_entry(parent, variable, bg_color, password=False, width=0, int_only=False):
     entry = tkinter.Entry(parent, textvariable=variable, background=bg_color, foreground=GUI_FONT_STYLES['content']['font-color'], insertbackground=GUI_FONT_STYLES['content']['font-color'], highlightcolor=GUI_ENTRY_BORDER_CLR, highlightbackground=GUI_ENTRY_BORDER_CLR, highlightthickness=GUI_ENTRY_BORDER_WIDTH)
@@ -102,8 +108,10 @@ def create_entry(parent, variable, bg_color, password=False, width=0, int_only=F
 
     return entry
 
+
 def create_text_area(parent, bg_color):
     return tkinter.scrolledtext.ScrolledText(parent, background=bg_color, highlightcolor=GUI_ENTRY_BORDER_CLR, highlightbackground=GUI_ENTRY_BORDER_CLR)
+
 
 def _populate_font_styles():
     global GUI_FONT_STYLES
@@ -128,8 +136,10 @@ def _populate_font_styles():
     GUI_FONT_STYLES['content'] = { 'font': (font_name, 12), 'font-color': '#FFFFFF' }
     GUI_FONT_STYLES['button'] = { 'font': (font_name, 12), 'font-color': '#24201d', 'disabled-font-color': '#4a4542', 'background-color': '#feffff' }
 
+
 def close_window(window):
     window.root.destroy()
+
 
 def wizard_wrapper(credentials, wantlist_urls, max_sellers):
     # Step 1: Call the Wizard
@@ -140,9 +150,10 @@ def wizard_wrapper(credentials, wantlist_urls, max_sellers):
     global THREAD_QUEUE
     THREAD_QUEUE.put(result)
 
-def credentials_validity_wrapper(credentials):
+
+def credentials_validity_wrapper(browser_name, credentials):
     # Step 1: Check the validity
-    result = check_credentials_validity(credentials, silently=True)
+    result = check_credentials_validity(browser_name, credentials, silently=True)
     result.logMessages()
 
     # Step 2: If valid create the file to avoid the user to enter them again
@@ -152,6 +163,7 @@ def credentials_validity_wrapper(credentials):
     # Step 3: Push result into the thread queue
     global THREAD_QUEUE
     THREAD_QUEUE.put(result)
+
 
 def wizard_has_finished(params):
     # Step 1: Check if the thread as finished
@@ -167,6 +179,7 @@ def wizard_has_finished(params):
     window_operation_over(params[0], result)
 
     return True
+
 
 def credentials_validity_has_finished(params):
     # Step 1: Check if the thread as finished
@@ -191,8 +204,44 @@ def credentials_validity_has_finished(params):
 
     return True
 
+
 def next_step(window, param1, param2):
-    if window.step == 'request_credentials':
+    if window.step == 'request_browser_name':
+        # Step 1: Check browser name validity
+        result = get_formatted_browser_name(param1.get())
+        result.logMessages()
+        if not result.isValid():
+            set_window_description(window, "Error: Incompatible or invalid browser name '{}'.".format(param1.get()), is_error=True)
+            return True
+
+        # Set the reformatted browser_name
+        window.browser_name = result.getResult()
+
+        # Step 2: Retrieve credentials and check validity
+        result = get_credentials_from_file()
+        result.logMessages()
+
+        if result.isValid():
+            # Credentials found in file, check validity
+            credentials = result.getResult()
+            if 'skip-check' not in credentials:
+                # Step 2.B: Cardmarket connexion test in a thread
+                window_wait_screen(window)
+                thread = threading.Thread(target=credentials_validity_wrapper, args=(window.browser_name, credentials,), daemon=True)
+                thread.start()
+
+                # Step 2.C: Callback to move to the next step
+                window.root.after(200, credentials_validity_has_finished, (window, thread))
+                return True
+            else:
+                window.credentials = credentials
+
+        # Step 3: Set the appropriate first step on the window
+        if not window.credentials:
+            window_request_credentials(window)
+        else:
+            window_request_wantlists(window)
+    elif window.step == 'request_credentials':
         # Step 1: Create a credentials dict
         credentials = { 'login': param1.get(), 'password': param2.get() }
 
@@ -205,10 +254,10 @@ def next_step(window, param1, param2):
 
         # Step 2.B: Cardmarket connexion test in a thread
         window_wait_screen(window)
-        thread = threading.Thread(target=credentials_validity_wrapper, args=(credentials,), daemon=True)
+        thread = threading.Thread(target=credentials_validity_wrapper, args=(window.browser_name, credentials,), daemon=True)
         thread.start()
 
-        # Step 4: Callback to display the final screen when the wizard has finished
+        # Step 3: Callback to move to the next step
         window.root.after(200, credentials_validity_has_finished, (window, thread))
     elif window.step == 'request_wantlists':
         # Step 1: Convert parameters
@@ -246,6 +295,7 @@ def next_step(window, param1, param2):
 
     return True
 
+
 def create_default_widgets(window):
     # Step 1: Create the title label, it will display the current step title
     label_title = create_label(window.root, window.title, 'title', window.main_bg_color)
@@ -274,6 +324,7 @@ def create_default_widgets(window):
     window.button_next = create_button(frame_buttons, window.button_next_text, window.main_bg_color)
     window.button_next.grid(column=1, row=0, sticky=tkinter.NE)
 
+
 def set_window_description(window, message, is_error=False, is_warn=False):
     if is_error:
         window.description_label.configure(foreground='red')
@@ -283,6 +334,50 @@ def set_window_description(window, message, is_error=False, is_warn=False):
         window.description_label.configure(foreground=GUI_FONT_STYLES['description']['font-color'])
 
     window.description.set(message)
+
+
+def window_request_browser_name(window):
+    # Step 1: Set current prog step
+    window.step = 'request_browser_name'
+
+    # Step 2: Set title and description
+    window.title.set('Open a Cardmarket tab in your favorite browser')
+    set_window_description(window, 'This is required to bypass Cloudflare protection.')
+
+    # Step 3: Create widgets
+
+    # Step 3.A: Clear the window content frame
+    for child_widget in window.content.winfo_children():
+        child_widget.destroy()
+
+    # Step 3.B: Start by creating the parent frame for the widgets.
+    frame_parent = tkinter.Frame(window.content, background=window.content_bg_color)
+    frame_parent.grid(column=0, row=0)
+    frame_parent.grid_columnconfigure(1, weight=1)
+
+    # Step 3.C: Create the variable that will store the browser name
+    browser_name = tkinter.StringVar()
+
+    # Step 3.D: Create the two row
+    label_browser_name = create_label(frame_parent, 'Browser Name', 'content', window.content_bg_color)
+    label_browser_name.grid(row=0, column=0, pady=(0, 4), sticky=tkinter.E)
+    entry_browser_name = create_entry(frame_parent, browser_name, window.content_bg_color)
+    entry_browser_name.grid(row=0, column=1, ipadx=4, padx=(4, 0), pady=(0, 4), sticky=tkinter.NSEW)
+
+    # Step 4: Add disclaimer message
+    text_disclaimer = "Disclaimer: Ensure only one Cardmarket tab is open and you aren't logged-in."
+    label_disclaimer = create_label(window.content, text_disclaimer, 'description', window.content_bg_color)
+    label_disclaimer.grid(row=1, column=0, pady=(0, 14), sticky=tkinter.S)
+
+    # Step 5: Force a visual update to "fix" invisible widgets (tkinter.Entry elems wasn't rendered)
+    window.root.update()
+    window.root.update_idletasks()
+
+    # Step 6: Update Next button
+    window.button_next_text.set('NEXT STEP')
+    window.button_next.configure(state=tkinter.NORMAL)
+    window.button_next.configure(command=partial(next_step, window, browser_name, None))
+
 
 def window_request_credentials(window, error_msg=None):
     # Step 1: Set current prog step
@@ -335,6 +430,7 @@ def window_request_credentials(window, error_msg=None):
     window.button_next.configure(state=tkinter.NORMAL)
     window.button_next.configure(command=partial(next_step, window, username, password))
 
+
 def window_request_wantlists(window):
     # Step 1: Set current prog step
     window.step = 'request_wantlists'
@@ -382,6 +478,7 @@ def window_request_wantlists(window):
     window.button_next.configure(state=tkinter.NORMAL)
     window.button_next.configure(command=partial(next_step, window, wantlists_area, max_sellers))
 
+
 def window_operation_over(window, result):
     # Step 1: Set current prog step
     window.step = 'operation_over'
@@ -422,6 +519,7 @@ def window_operation_over(window, result):
     window.button_next_text.set('CLOSE')
     window.button_next.configure(state=tkinter.NORMAL)
 
+
 def window_wait_screen(window):
     # Step 1: Detroy / clean the content frame
     for child_widget in window.content.winfo_children():
@@ -452,6 +550,7 @@ def window_wait_screen(window):
     window.button_next_text.set('IN PROGRESS...')
     window.button_next.configure(state=tkinter.DISABLED)
 
+
 def set_window_icon(window):
     # I tested a bunch of code with ICO, ICNS, PNG, GIF, XBM  without success to get a generic way to handle all platforms
     from platform import system
@@ -464,6 +563,7 @@ def set_window_icon(window):
         # Dont know if this method work on Linux but it's the only working one for Mac OS
         icon = tkinter.PhotoImage(file='assets/images/icon.png')
         window.root.iconphoto(True, icon)
+
 
 def create_window():
     # Step 1: Create the window obj
@@ -500,31 +600,15 @@ def create_window():
 
     return window
 
+
 def main():
     """Entry point of the CW Wizard GUI script"""
 
     # Step 1: Initialize and create the window
     window = create_window()
 
-    # Step 2: Retrieve credentials and check validity
-    result = get_credentials_from_file()
-    result.logMessages()
-
-    if result.isValid():
-        # Check the credentials are valid
-        credentials = result.getResult()
-        if 'skip-check' not in credentials:
-            result = check_credentials_validity(credentials, silently=True)
-            result.logMessages()
-        # Since we have maybe check the validity second check to the result
-        if result.isValid():
-            window.credentials = result.getResult()
-
-    # Step 3: Set the appropriate first step on the window
-    if not window.credentials:
-        window_request_credentials(window)
-    else:
-        window_request_wantlists(window)
+    # Step 2: Request the browser name used
+    window_request_browser_name(window)
 
     # Step 4: Put back the alpha of the window to full opaque
     window.root.attributes('-alpha', 1.0)
@@ -533,6 +617,7 @@ def main():
     window.root.mainloop()
 
     return True
+
 
 if __name__ == '__main__':
     main()

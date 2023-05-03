@@ -10,6 +10,10 @@ Install it with this command in your terminal of choice:
 ```bash
 python3 -m pip install beautifulsoup4
 ```
+- **Browser Cookie 3**, Python package used to L\loads cookies used by your web browser into a cookiejar object. Required since Cardmarket is now protected by Cloudflare.
+```bash
+python3 -m pip install browser-cookie3
+```
 
 ## Optional (needed for the User Interface script)
 - **tkinter**, GUI framework for Python. Only needed if you want to use the GUI script (`cw-wizard-gui.py`).

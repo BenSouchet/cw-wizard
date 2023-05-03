@@ -1,17 +1,24 @@
+ # Python shipped packages imports
 import re
 import sys
 import json
 import base64
 import logging
-import requests
+import platform
 
 from decimal import Decimal
 from pathlib import Path
-from bs4 import BeautifulSoup
 
+# Dependencies imports
+import requests
+from bs4 import BeautifulSoup
+import browser_cookie3
+
+
+# Global variables
 SCRIPT_NAME = 'CW Wizard'
 
-VERSION = '1.0.2'
+VERSION = '1.0.3'
 
 EXIT_ERROR_MSG = 'The Wizard encountered issue(s) please check previous logs.\n'
 EXIT_SUCCESS_MSG = 'The Wizard has finish is work, have a great day!\n'
@@ -20,7 +27,8 @@ EXIT_SUCCESS_MSG = 'The Wizard has finish is work, have a great day!\n'
 CURR_LANG = 'en'
 CURR_GAME = 'Magic'
 
-CARDMARKET_BASE_URL = 'https://www.cardmarket.com'
+CARDMARKET_TOP_DOMAIN = '.cardmarket.com'
+CARDMARKET_BASE_URL = 'https://www' + CARDMARKET_TOP_DOMAIN
 CARDMARKET_BASE_URL_REGEX = r'^https:\/\/www\.cardmarket\.com'
 
 # This value can be overwriten via script arguments or via GUI
@@ -49,6 +57,33 @@ REQUEST_ERRORS  = { 307: ['Temporary Redirect', 'Particular requests can deliver
                     429: ['Too Many Requests', 'Our API has the following request limits which reset every midnight at 12am (0:00) CET/CEST: - Dedicated App (private users): 5.000 | - Dedicated App (commercial users): 100.000 | - Dedicated App (powerseller users): 1.000.000 | - Widget and 3rd-Party Apps don\'t have any request limits. If your has a request limit, additional response headers are sent by the API: - X-Request-Limit-Max, which contains your request limit, - X-Request-Limit-Count, which contains the actual number of requests you made after the last request limit reset. Once your request limit is reached the API will answer with a 429 Too Many Requests until the next request limit reset.']}
 
 CREDENTIALS_PATH = Path.cwd().joinpath('credentials.json')
+
+USER_AGENT_HEADER = {
+    "Darwin": "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/112.0.0.0 Safari/537.36",
+    "Windows": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/112.0.0.0 Safari/537.36",
+    "Linux": "Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/112.0.0.0 Safari/537.36",
+}
+
+REQUEST_HEADERS = {
+    "authority": "cardmarket.com",
+    "accept": "text/html,application/xhtml+xml,application/xml;q=0.9,image/avif,image/webp,image/apng,*/*;q=0.8,application/signed-exchange;v=b3;q=0.7",
+    "accept-language": "fr,en-US;q=0.9,en;q=0.8",
+    "cache-control": "max-age=0",
+    "dnt": "1",
+    "sec-ch-ua": '"Chromium";v="112", "Google Chrome";v="112", "Not:A-Brand";v="99"',
+    "sec-ch-ua-mobile": "?0",
+    "sec-ch-ua-platform": '"macOS"',
+    "sec-fetch-dest": "document",
+    "sec-fetch-mode": "navigate",
+    "sec-fetch-site": "none",
+    "sec-fetch-user": "?1",
+    "Upgrade-Insecure-Requests": "1",
+    "User-Agent": USER_AGENT_HEADER[platform.system()]
+}
+
+
+COMPATIBLE_BROWSERS = ["chrome", "firefox", "opera", "opera_gx", "edge", "chromium", "brave", "vivaldi", "safari"]
+
 
 class FunctResult():
     def __init__(self):
@@ -124,6 +159,7 @@ class FunctResult():
                 messages.append(message['content'])
         return messages
 
+
 class ColoredFormatter(logging.Formatter):
     """Custom formatter handling color"""
     cyan = '\x1b[36;20m'
@@ -147,6 +183,7 @@ class ColoredFormatter(logging.Formatter):
         formatter = logging.Formatter(log_format)
         return formatter.format(record)
 
+
 def init_logger():
     """Initialize script logger"""
 
@@ -162,7 +199,9 @@ def init_logger():
 
     return logger
 
+
 LOG = init_logger()
+
 
 def extract_log_in_error_msg(response):
     error_msg = ''
@@ -176,6 +215,7 @@ def extract_log_in_error_msg(response):
         error_msg = error_msg_container.get_text('. ')
 
     return error_msg
+
 
 def cardmarket_log_in(session, credentials, silently=False):
     funct_result = FunctResult()
@@ -213,10 +253,10 @@ def cardmarket_log_in(session, credentials, silently=False):
     response_post_login = session.post('{}/{}/{}/PostGetAction/User_Login'.format(CARDMARKET_BASE_URL, CURR_LANG, CURR_GAME), data=payload)
     if response_post_login.status_code != 200:
         # Issue with the request
-        funct_result.addDetailedRequestError('log-in to Cardmarket', response_get_login_page)
+        funct_result.addDetailedRequestError('log-in to Cardmarket', response_post_login)
         return funct_result
 
-    # Step 5: Check in the response HTML if there is a log-in rror
+    # Step 5: Check in the response HTML if there is a log-in error
     log_in_error_msg = extract_log_in_error_msg(response_post_login)
     if log_in_error_msg:
         # It's most likely an issue with the payload (wrong username and/or password)
@@ -227,6 +267,7 @@ def cardmarket_log_in(session, credentials, silently=False):
         LOG.info('Successfully logged in !\n')
 
     return funct_result
+
 
 def cardmarket_log_out(session, silently=False):
     funct_result = FunctResult()
@@ -244,6 +285,48 @@ def cardmarket_log_out(session, silently=False):
         LOG.info('Successfully logout!')
 
     return funct_result
+
+
+def rename_dict_key(dictionnary, old_key_name, new_key_name):
+    # No operation performed iff key not in dictionnary
+    if old_key_name in dictionnary:
+        dictionnary[new_key_name] = dictionnary[old_key_name]
+        del dictionnary[old_key_name]
+
+    return dictionnary
+
+
+def get_wantlist_columns_correlation_table(wantlist_table_head):
+    correlation_table = {}
+    for index, th_column in enumerate(wantlist_table_head.find_all('th')):
+        if th_column.has_attr('class'):
+            column_name = th_column['class'][0]
+            if column_name == 'min-size':
+                # Special case: This is a boolean column, let's find the correct name
+                # Get span title in title format (capitalize first letter of every words)
+                column_name = th_column.find('span')['title'].title()
+                # Removing all non alphanumerical characters
+                column_name = ''.join(e for e in column_name if e.isalnum())
+                # Lastly add a prefix, so we know it's a True/False column
+                column_name = 'is' + column_name
+            # Add to correlation dict
+            correlation_table[column_name] = index
+
+    # Rename some keys to match requirements
+    correlation_table = rename_dict_key(correlation_table, old_key_name='condition', new_key_name='minCondition')
+    correlation_table = rename_dict_key(correlation_table, old_key_name='buyPrice', new_key_name='maxPrice')
+    correlation_table = rename_dict_key(correlation_table, old_key_name='isReverseHolo', new_key_name='isReverse')
+    correlation_table = rename_dict_key(correlation_table, old_key_name='isFirstEdition', new_key_name='isFirstEd')
+
+    # Remove useless entries
+    # (not checking first if they exists, since they always SHOULD exists, common columns)
+    del correlation_table['select']
+    del correlation_table['preview']
+    del correlation_table['mailAlert']
+    del correlation_table['action']
+
+    return correlation_table
+
 
 def retrieve_wantlist(session, wantlist_url, continue_on_warning=False):
     funct_result = FunctResult()
@@ -272,8 +355,10 @@ def retrieve_wantlist(session, wantlist_url, continue_on_warning=False):
         return funct_result
 
     wantlist_table = wantlist_section.table.tbody
-    column_index = { 'name': 3, 'languages': 5, 'minCondition': 6, 'isReverse': 7,
-                    'isSigned': 8, 'isFirstEd': 9, 'isAltered': 10,'maxPrice': 11 }
+    # Get all the columns (attributes) available for this wantlist
+    # Create a correlation table: column name -> index in article row
+    wantlist_table_head = wantlist_section.table.thead
+    column_correlation_table = get_wantlist_columns_correlation_table(wantlist_table_head)
 
     # Step 5: Convert the wantlist table to python list
     card_count = len(wantlist_table.contents)
@@ -283,19 +368,24 @@ def retrieve_wantlist(session, wantlist_url, continue_on_warning=False):
         card = {}
 
         # Step 5.A: Retrieve and add attributes to the card dict
-        name_link_tag = row.contents[column_index['name']].a
+        name_link_tag = row.contents[column_correlation_table['name']].a
         card['url'] = CARDMARKET_BASE_URL + name_link_tag['href'].split('?')[0]
         card['title'] = name_link_tag.contents[0]
 
         card['languages'] = []
-        languages_link_tags = row.contents[column_index['languages']].find_all('a')
+        languages_link_tags = row.contents[column_correlation_table['languages']].find_all('a')
         for languages_link_tag in languages_link_tags:
             card['languages'].append(languages_link_tag.span['data-original-title'])
 
-        for attribute in ['minCondition', 'isReverse', 'isSigned', 'isFirstEd', 'isAltered']:
-            card[attribute] = row.contents[column_index[attribute]].find('span', class_='sr-only').contents[0]
+        card['quantity'] = int(row.contents[column_correlation_table['amount']].string)
 
-        card['maxPrice'] = row.contents[column_index['maxPrice']].span.contents[0]
+        for attribute_name, column_index in column_correlation_table.items():
+            if attribute_name not in ['amount', 'name', 'languages', 'maxPrice']:
+                span_child = row.contents[column_index].find('span', class_='sr-only')
+                if span_child is not None:
+                    card[attribute_name] = span_child.contents[0]
+
+        card['maxPrice'] = row.contents[column_correlation_table['maxPrice']].span.contents[0]
         # If maxPrice is a value we convert it into a Decimal
         if card['maxPrice'] != 'N/A':
             card['maxPrice'] = Decimal(card['maxPrice'].split(' ')[0].replace('.','').replace(',','.'))
@@ -306,12 +396,14 @@ def retrieve_wantlist(session, wantlist_url, continue_on_warning=False):
     funct_result.addResult(wantlist)
     return funct_result
 
+
 def _get_load_more_args(card, product_id):
     args_dict = { 'page': '0' }
     filter_settings = {}
     filter_settings['idLanguage'] = {str(CARD_LANGUAGES[language]): CARD_LANGUAGES[language] for language in card['languages']}
+    # The names of attributes in the list below are the ones accepted as filters by Cardmarket
     for attribute in ['isReverse', 'isSigned', 'isFirstEd', 'isAltered']:
-        if card[attribute] != 'Any':
+        if attribute in card and card[attribute] != 'Any':
             filter_settings[attribute] = card[attribute]
     condition = [shortname for shortname in CARD_CONDITIONS_SHORTNAMES.values()]
     if card['minCondition'] != 'Poor':
@@ -322,13 +414,16 @@ def _get_load_more_args(card, product_id):
 
     return args_dict
 
+
 def _get_load_more_product_id(load_more_btn):
     onclick_str = load_more_btn['onclick']
     return re.search(r'\'idProduct\'\:\'(?P<product_id>\d+)\'', onclick_str).group('product_id')
 
+
 def _get_load_more_request_token(load_more_btn):
     onclick_str = load_more_btn['onclick']
     return re.match(r'jcp\(\'(?P<token>[A-Z0-9%]+)\'', onclick_str).group('token')
+
 
 def load_more_articles(session, funct_result, soup, card, articles_table):
     # Step 1: Check if there isn't a load more articles button, in this case we stop
@@ -374,6 +469,7 @@ def load_more_articles(session, funct_result, soup, card, articles_table):
         else:
             active = False
 
+
 def populate_sellers_dict(session, sellers, wantlist, articles_comment=False, continue_on_warning=False):
     funct_result = FunctResult()
 
@@ -393,7 +489,7 @@ def populate_sellers_dict(session, sellers, wantlist, articles_comment=False, co
             params['language'] = CARD_LANGUAGES[card_language]
             params['minCondition'] = CARD_CONDITIONS[card['minCondition']]
             for attribute in ['isReverse', 'isSigned', 'isFirstEd', 'isAltered']:
-                if card[attribute] != 'Any':
+                if attribute in card and card[attribute] != 'Any':
                     params[attribute] = card[attribute]
 
             # Step 2: Get the card page
@@ -477,6 +573,7 @@ def populate_sellers_dict(session, sellers, wantlist, articles_comment=False, co
 
     return funct_result
 
+
 def determine_relevant_sellers(sellers, max_sellers):
     LOG.debug('------- The Wizard is sorting sellers to find relevant ones...')
 
@@ -499,6 +596,7 @@ def determine_relevant_sellers(sellers, max_sellers):
 
     return relevant_sellers
 
+
 def delete_previous_result_page(path_file):
     funct_result = FunctResult()
 
@@ -514,6 +612,7 @@ def delete_previous_result_page(path_file):
             funct_result.addError('Failed to delete "{}". Reason: {}'.format(path_file, e))
             return funct_result
     return funct_result
+
 
 def build_result_page(wantlists_info, max_sellers, sellers, relevant_sellers):
     funct_result = FunctResult()
@@ -605,7 +704,21 @@ def build_result_page(wantlists_info, max_sellers, sellers, relevant_sellers):
 
     return funct_result
 
-def cardmarket_wantlist_wizard(credentials, wantlist_urls, continue_on_warning, max_sellers, articles_comment=False):
+
+def get_cardmarket_cookies(browser_name):
+    # Caution: browser_name should be in snake case
+    # Retrieve Cardmarket Cookies
+    if browser_name is not None:
+        funct_retrieve_cookies = getattr(browser_cookie3, browser_name, None)
+        if funct_retrieve_cookies is not None:
+            return funct_retrieve_cookies(domain_name=CARDMARKET_TOP_DOMAIN)
+
+    # Fallback get Cardmarket cookies in every browsers installed
+    # (can fail for example if users don't give access rights for Safari cookies)
+    return browser_cookie3.load(domain_name=CARDMARKET_TOP_DOMAIN)
+
+
+def cardmarket_wantlist_wizard(browser_name, credentials, wantlist_urls, continue_on_warning, max_sellers, articles_comment=False):
     funct_result = FunctResult()
     LOG.debug('------- Calling the Wizard...\r\n')
 
@@ -615,12 +728,16 @@ def cardmarket_wantlist_wizard(credentials, wantlist_urls, continue_on_warning, 
 
     # Step 1: Create a web session (to be able to stay connected)
     with requests.Session() as session:
+        # Setting cookies and headers to bypass / skip Cloudflare protection
+        session.cookies = get_cardmarket_cookies(browser_name)
+        session.headers.update(REQUEST_HEADERS)
+
         # Step 2: Log-in to Cardmarket
         funct_result = cardmarket_log_in(session, credentials)
         funct_result.logMessages()
         if not funct_result.isValid():
             # FATAL error we cannot perform anything without being log-in
-            return False
+            return funct_result
 
         sellers = {}
         wantlists_info = []
@@ -673,6 +790,7 @@ def cardmarket_wantlist_wizard(credentials, wantlist_urls, continue_on_warning, 
 
     return funct_result
 
+
 def get_credentials_from_file():
     funct_result = FunctResult()
 
@@ -711,6 +829,7 @@ def get_credentials_from_file():
 
     funct_result.addResult(credentials)
     return funct_result
+
 
 def check_wantlists_and_max_sellers(wantlist_urls, max_sellers, silently=False):
     funct_result = FunctResult()
@@ -758,6 +877,7 @@ def check_wantlists_and_max_sellers(wantlist_urls, max_sellers, silently=False):
 
     return funct_result
 
+
 def create_credentials_file(credentials, silently=False):
     # Normaly we write to file only if we checked the credentials so :
     # Step 1: Add a special key to skip checking the credentials in the future
@@ -772,11 +892,16 @@ def create_credentials_file(credentials, silently=False):
 
     return True
 
-def check_credentials_validity(credentials, silently=False):
+
+def check_credentials_validity(browser_name, credentials, silently=False):
     funct_result = FunctResult()
 
      # Step 1: Create a web session
     with requests.Session() as session:
+        # Setting cookies and headers to bypass / skip Cloudflare protection
+        session.cookies = get_cardmarket_cookies(browser_name)
+        session.headers.update(REQUEST_HEADERS)
+
         # Step 2: Log-in to Cardmarket
         funct_result = cardmarket_log_in(session, credentials, silently=silently)
         if not funct_result.isValid():
@@ -789,4 +914,35 @@ def check_credentials_validity(credentials, silently=False):
     create_credentials_file(credentials, silently=True)
 
     funct_result.addResult(credentials)
+    return funct_result
+
+
+def get_formatted_browser_name(browser_name):
+    funct_result = FunctResult()
+    original_browser_name = browser_name
+
+    # Properly format the browser name, than check validity
+    # First put name in lowercase and remove leading and trailing space(s)
+    browser_name = browser_name.lower().strip()
+    # Replace remaining space(s) to underscore(s)
+    browser_name = browser_name.replace(' ', '_')
+    # Remove non alphanumarical characters (preserve underscore(s))
+    browser_name = ''.join(c for c in browser_name if c.isalnum() or c == '_')
+
+    # Remove company name if present
+    if browser_name.startswith('google_'):
+        browser_name = 'chrome'
+    elif browser_name.startswith('mozilla_'):
+        browser_name = 'firefox'
+    elif browser_name.startswith('microsoft_'):
+        browser_name = 'edge'
+    elif browser_name.startswith('apple_'):
+        browser_name = 'safari'
+
+    if browser_name not in COMPATIBLE_BROWSERS:
+        funct_result.addError("Browser name '{}' not compatible or unrecognized.".format(original_browser_name))
+
+    # Set the reformatted browser_name
+    funct_result.setResult(browser_name)
+
     return funct_result
