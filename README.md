@@ -5,6 +5,7 @@
 
 **CW Wizard** (Cardmarket Wantlist Wizard), is a *Python 3* script to find **the best deals** (bundles) that can be done for the cards you are looking for in your wantlists.
 
+- **Bypass Cloudflare security** 🔓
 - Easily find the sellers with the most cards you are looking for 🃏
 - Open Source script with MIT license, you can create you own Wizard 💫
 - Fully commented, you can check what is done and how it's done 🧐
@@ -38,7 +39,7 @@ Now you have two options: the **script with a User Interface** *(like a true sof
 4. Then simply follow the steps in the interface that popped up.
 
 ### Starting the Command Line Script
-1. Open on your favorite browser one Cardmarket tab (just one and don't log-in)
+1. Open, on your favorite browser, one Cardmarket tab (just one, and don't log-in)
 2. Check the script help (to see available parameters):
 ```shell
 > python3 cw-wizard.py -h
