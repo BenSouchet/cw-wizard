@@ -141,9 +141,9 @@ def close_window(window):
     window.root.destroy()
 
 
-def wizard_wrapper(credentials, wantlist_urls, max_sellers):
+def wizard_wrapper(browser_name, user_agent, credentials, wantlist_urls, max_sellers):
     # Step 1: Call the Wizard
-    result = cardmarket_wantlist_wizard(credentials, wantlist_urls, continue_on_warning=True, max_sellers=max_sellers)
+    result = cardmarket_wantlist_wizard(browser_name, user_agent, credentials, wantlist_urls, continue_on_warning=True, max_sellers=max_sellers)
     result.logMessages()
 
     # Step 2: Push result into the thread queue
@@ -151,9 +151,9 @@ def wizard_wrapper(credentials, wantlist_urls, max_sellers):
     THREAD_QUEUE.put(result)
 
 
-def credentials_validity_wrapper(browser_name, credentials):
+def credentials_validity_wrapper(browser_name, user_agent, credentials):
     # Step 1: Check the validity
-    result = check_credentials_validity(browser_name, credentials, silently=True)
+    result = check_credentials_validity(browser_name, user_agent, credentials, silently=True)
     result.logMessages()
 
     # Step 2: If valid create the file to avoid the user to enter them again
@@ -206,7 +206,7 @@ def credentials_validity_has_finished(params):
 
 
 def next_step(window, param1, param2):
-    if window.step == 'request_browser_name':
+    if window.step == 'request_browser_name_user_agent':
         # Step 1: Check browser name validity
         result = get_formatted_browser_name(param1.get())
         result.logMessages()
@@ -216,6 +216,13 @@ def next_step(window, param1, param2):
 
         # Set the reformatted browser_name
         window.browser_name = result.getResult()
+
+        # Step 1.B: Handling User-Agent
+        user_agent = param2.get()
+        if not user_agent:
+            set_window_description(window, 'Error: User-Agent cannot be empty.', is_error=True)
+            return True
+        window.user_agent = user_agent
 
         # Step 2: Retrieve credentials and check validity
         result = get_credentials_from_file()
@@ -227,7 +234,7 @@ def next_step(window, param1, param2):
             if 'skip-check' not in credentials:
                 # Step 2.B: Cardmarket connexion test in a thread
                 window_wait_screen(window)
-                thread = threading.Thread(target=credentials_validity_wrapper, args=(window.browser_name, credentials,), daemon=True)
+                thread = threading.Thread(target=credentials_validity_wrapper, args=(window.browser_name, window.user_agent, credentials,), daemon=True)
                 thread.start()
 
                 # Step 2.C: Callback to move to the next step
@@ -254,7 +261,7 @@ def next_step(window, param1, param2):
 
         # Step 2.B: Cardmarket connexion test in a thread
         window_wait_screen(window)
-        thread = threading.Thread(target=credentials_validity_wrapper, args=(window.browser_name, credentials,), daemon=True)
+        thread = threading.Thread(target=credentials_validity_wrapper, args=(window.browser_name, window.user_agent, credentials,), daemon=True)
         thread.start()
 
         # Step 3: Callback to move to the next step
@@ -285,7 +292,7 @@ def next_step(window, param1, param2):
         # Step 3: All seems good, display the waiting screen and call the wizard !
         window.step = 'wizard_in_progress'
         window_wait_screen(window)
-        thread = threading.Thread(target=wizard_wrapper, args=(window.credentials, wantlist_urls, max_sellers,), daemon=True)
+        thread = threading.Thread(target=wizard_wrapper, args=(window.browser_name, window.user_agent, window.credentials, wantlist_urls, max_sellers,), daemon=True)
         thread.start()
 
         # Step 4: Callback to display the final screen when the wizard has finished
@@ -336,9 +343,9 @@ def set_window_description(window, message, is_error=False, is_warn=False):
     window.description.set(message)
 
 
-def window_request_browser_name(window):
+def window_request_browser_name_user_agent(window):
     # Step 1: Set current prog step
-    window.step = 'request_browser_name'
+    window.step = 'request_browser_name_user_agent'
 
     # Step 2: Set title and description
     window.title.set('Open a Cardmarket tab in your favorite browser')
@@ -357,6 +364,7 @@ def window_request_browser_name(window):
 
     # Step 3.C: Create the variable that will store the browser name
     browser_name = tkinter.StringVar()
+    user_agent = tkinter.StringVar()
 
     # Step 3.D: Create the two row
     label_browser_name = create_label(frame_parent, 'Browser Name', 'content', window.content_bg_color)
@@ -364,8 +372,13 @@ def window_request_browser_name(window):
     entry_browser_name = create_entry(frame_parent, browser_name, window.content_bg_color)
     entry_browser_name.grid(row=0, column=1, ipadx=4, padx=(4, 0), pady=(0, 4), sticky=tkinter.NSEW)
 
+    label_user_agent = create_label(frame_parent, 'User-Agent', 'content', window.content_bg_color)
+    label_user_agent.grid(row=1, column=0, sticky=tkinter.E)
+    entry_user_agent = create_entry(frame_parent, user_agent, window.content_bg_color)
+    entry_user_agent.grid(row=1, column=1, padx=(4, 0), sticky=tkinter.NSEW)
+
     # Step 4: Add disclaimer message
-    text_disclaimer = "Disclaimer: Ensure only one Cardmarket tab is open and you aren't logged-in."
+    text_disclaimer = "Disclaimer: Ensure only one Cardmarket tab is open and you aren't logged-in.\nFor User-Agent search \"my user agent\" on Google."
     label_disclaimer = create_label(window.content, text_disclaimer, 'description', window.content_bg_color)
     label_disclaimer.grid(row=1, column=0, pady=(0, 14), sticky=tkinter.S)
 
@@ -376,7 +389,7 @@ def window_request_browser_name(window):
     # Step 6: Update Next button
     window.button_next_text.set('NEXT STEP')
     window.button_next.configure(state=tkinter.NORMAL)
-    window.button_next.configure(command=partial(next_step, window, browser_name, None))
+    window.button_next.configure(command=partial(next_step, window, browser_name, user_agent))
 
 
 def window_request_credentials(window, error_msg=None):
@@ -608,7 +621,7 @@ def main():
     window = create_window()
 
     # Step 2: Request the browser name used
-    window_request_browser_name(window)
+    window_request_browser_name_user_agent(window)
 
     # Step 4: Put back the alpha of the window to full opaque
     window.root.attributes('-alpha', 1.0)

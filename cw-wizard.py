@@ -33,15 +33,24 @@ def get_credentials_user_inputs():
         return funct_result
 
     # Step 2: Ask for the login
-    credentials['login'] = input('Enter your Cardmarket login: ')
+    credentials['login'] = input('\nEnter your Cardmarket login: ')
 
     # Step 2: Ask for the login
-    credentials['password'] = getpass.getpass('Enter your Cardmarket password: ')
+    credentials['password'] = getpass.getpass('\nEnter your Cardmarket password: ')
+
+    print("\n")
 
     create_credentials_file(credentials)
 
     funct_result.addResult(credentials)
 
+    return funct_result
+
+def get_user_agent_from_inputs():
+    funct_result = FunctResult()
+    LOG.info("To properly bypass Cloudflare your user agent is require.")
+    funct_result.addResult(input('\nEnter your browser User-Agent (search on Google "my user agent"):\n'))
+    print("\n")
     return funct_result
 
 def main(browser_name, wantlist_urls, continue_on_warning, max_sellers, articles_comment):
@@ -68,28 +77,32 @@ def main(browser_name, wantlist_urls, continue_on_warning, max_sellers, articles
 
     credentials = None
     if result.isValid():
-        # Check the credentials are valid
         credentials = result.getResult()
-        if 'skip-check' not in credentials:
-            result = check_credentials_validity(browser_name, credentials, silently=True)
-            result.logMessages()
-        # Since we have maybe check the validity, perform a second check on the result object
-        if result.isValid():
-            credentials = result.getResult()
 
-    if not credentials:
+    result = get_user_agent_from_inputs()
+    user_agent = result.getResult()
+
+    if credentials:
+        # Check the credentials are valid
+        if 'skip-check' not in credentials:
+            result = check_credentials_validity(browser_name, user_agent, credentials, silently=True)
+            result.logMessages()
+            if result.isValid():
+                credentials = result.getResult()
+            else:
+                return LOG.error(EXIT_ERROR_MSG)
+    else:
         # File not found, ask the user if he want to create the file
         result = get_credentials_user_inputs()
         result.logMessages()
 
         if result.isValid():
             credentials = result.getResult()
+        else:
+            return LOG.error(EXIT_ERROR_MSG)
 
-    if not credentials:
-        return LOG.error(EXIT_ERROR_MSG)
-
-    # Step 3: Call the Wizard
-    result = cardmarket_wantlist_wizard(browser_name, credentials, wantlist_urls, continue_on_warning=continue_on_warning, max_sellers=max_sellers, articles_comment=articles_comment)
+    # Step 3: Call the Wizards
+    result = cardmarket_wantlist_wizard(browser_name, user_agent, credentials, wantlist_urls, continue_on_warning=continue_on_warning, max_sellers=max_sellers, articles_comment=articles_comment)
     result.logMessages()
 
     if not result.isValid():

@@ -18,7 +18,7 @@ import browser_cookie3
 # Global variables
 SCRIPT_NAME = 'CW Wizard'
 
-VERSION = '1.0.3'
+VERSION = '1.0.4'
 
 EXIT_ERROR_MSG = 'The Wizard encountered issue(s) please check previous logs.\n'
 EXIT_SUCCESS_MSG = 'The Wizard has finish is work, have a great day!\n'
@@ -58,27 +58,10 @@ REQUEST_ERRORS  = { 307: ['Temporary Redirect', 'Particular requests can deliver
 
 CREDENTIALS_PATH = Path.cwd().joinpath('credentials.json')
 
-USER_AGENT_HEADER = {
-    "Darwin": "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/112.0.0.0 Safari/537.36",
-    "Windows": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/112.0.0.0 Safari/537.36",
-    "Linux": "Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/112.0.0.0 Safari/537.36",
-}
-
 REQUEST_HEADERS = {
-    "authority": "cardmarket.com",
-    "accept": "text/html,application/xhtml+xml,application/xml;q=0.9,image/avif,image/webp,image/apng,*/*;q=0.8,application/signed-exchange;v=b3;q=0.7",
-    "accept-language": "fr,en-US;q=0.9,en;q=0.8",
-    "cache-control": "max-age=0",
-    "dnt": "1",
-    "sec-ch-ua": '"Chromium";v="112", "Google Chrome";v="112", "Not:A-Brand";v="99"',
-    "sec-ch-ua-mobile": "?0",
-    "sec-ch-ua-platform": '"macOS"',
-    "sec-fetch-dest": "document",
-    "sec-fetch-mode": "navigate",
-    "sec-fetch-site": "none",
-    "sec-fetch-user": "?1",
-    "Upgrade-Insecure-Requests": "1",
-    "User-Agent": USER_AGENT_HEADER[platform.system()]
+    "accept": "*/*",
+    "accept-language": "*",
+    "dnt": "1"
 }
 
 
@@ -442,7 +425,7 @@ def load_more_articles(session, funct_result, soup, card, articles_table):
     while active:
         # Step 3.A: Get the price of the last card currently displayed
         last_article = articles_table.contents[-1]
-        last_article_price_str = last_article.find('div', class_='price-container').find('span', class_='text-right').contents[0]
+        last_article_price_str = last_article.find('div', class_='price-container').find('span', class_='text-nowrap').contents[0]
         last_article_price = Decimal(last_article_price_str.split(' ')[0].replace('.','').replace(',','.'))
 
         # Step 3.B: Check if we need to load more articles, if yes send a new request to get more articles.
@@ -538,7 +521,7 @@ def populate_sellers_dict(session, sellers, wantlist, articles_comment=False, co
 
                 seller_profile_url = CARDMARKET_BASE_URL + seller_name_tag['href']
 
-                price_str = article_row.find('div', class_='price-container').find('span', class_='text-right').contents[0]
+                price_str = article_row.find('div', class_='price-container').find('span', class_='text-nowrap').contents[0]
                 price = Decimal(price_str.split(' ')[0].replace('.','').replace(',','.'))
                 # Step 4.E: Check if price isn't above maxPrice
                 if isinstance(card['maxPrice'], Decimal) and price > card['maxPrice']:
@@ -718,7 +701,7 @@ def get_cardmarket_cookies(browser_name):
     return browser_cookie3.load(domain_name=CARDMARKET_TOP_DOMAIN)
 
 
-def cardmarket_wantlist_wizard(browser_name, credentials, wantlist_urls, continue_on_warning, max_sellers, articles_comment=False):
+def cardmarket_wantlist_wizard(browser_name, user_agent, credentials, wantlist_urls, continue_on_warning, max_sellers, articles_comment=False):
     funct_result = FunctResult()
     LOG.debug('------- Calling the Wizard...\r\n')
 
@@ -730,7 +713,11 @@ def cardmarket_wantlist_wizard(browser_name, credentials, wantlist_urls, continu
     with requests.Session() as session:
         # Setting cookies and headers to bypass / skip Cloudflare protection
         session.cookies = get_cardmarket_cookies(browser_name)
-        session.headers.update(REQUEST_HEADERS)
+        headers = REQUEST_HEADERS.copy()
+        headers["user-agent"] = str(user_agent)
+        print(headers)
+        print(session.cookies)
+        session.headers.update(headers)
 
         # Step 2: Log-in to Cardmarket
         funct_result = cardmarket_log_in(session, credentials)
@@ -893,14 +880,16 @@ def create_credentials_file(credentials, silently=False):
     return True
 
 
-def check_credentials_validity(browser_name, credentials, silently=False):
+def check_credentials_validity(browser_name, user_agent, credentials, silently=False):
     funct_result = FunctResult()
 
      # Step 1: Create a web session
     with requests.Session() as session:
         # Setting cookies and headers to bypass / skip Cloudflare protection
         session.cookies = get_cardmarket_cookies(browser_name)
-        session.headers.update(REQUEST_HEADERS)
+        headers = REQUEST_HEADERS.copy()
+        headers["user-agent"] = str(user_agent)
+        session.headers.update(headers)
 
         # Step 2: Log-in to Cardmarket
         funct_result = cardmarket_log_in(session, credentials, silently=silently)

@@ -31,7 +31,7 @@ Now you have two options: the **script with a User Interface** *(like a true sof
 
 ### Starting the Script with a User Interface
 1. In this case you need to make sure that **tkinter** is available on your computer ([check here](https://github.com/BenSouchet/cw-wizard/blob/main/REQUIREMENTS.md#optional-needed-for-the-user-interface-script)).
-2. Open on your favorite browser one Cardmarket tab (just one and don't log-in).
+2. Open on your favorite browser one Cardmarket tab (just one).
 3. Execute this command in your terminal:
 ```shell
 > python3 cw-wizard-gui.py
@@ -39,7 +39,7 @@ Now you have two options: the **script with a User Interface** *(like a true sof
 4. Then simply follow the steps in the interface that popped up.
 
 ### Starting the Command Line Script
-1. Open, on your favorite browser, one Cardmarket tab (just one, and don't log-in)
+1. Open, on your favorite browser, one Cardmarket tab (just one)
 2. Check the script help (to see available parameters):
 ```shell
 > python3 cw-wizard.py -h
@@ -47,7 +47,7 @@ Now you have two options: the **script with a User Interface** *(like a true sof
 ```text
 usage: CW Wizard [-h] [-v] -b BROWSER_NAME -u WANTLIST_URLS [WANTLIST_URLS ...] [-m MAX_SELLERS] [-w] [-c]
 
-CW Wizard v1.0.3, Find the best bundles for the cards in your wantlist(s).
+CW Wizard v1.0.4, Find the best bundles for the cards in your wantlist(s).
 
 options:
   -h, --help            show this help message and exit
@@ -77,6 +77,10 @@ Example with multiple wantlists:
 4. If it's the first time you start the script your Cardmarket credentials will be asked to create a `credentials.json` file at the root of the project directory. For info on why credentials are required [read this section](https://github.com/BenSouchet/cw-wizard/edit/main/README.md#security-and-authentification).
 <img width="598" alt="credentials_dialog" src="https://user-images.githubusercontent.com/17025808/159022712-b95ef3f5-0da6-4547-8f94-d49c0a4582ee.png">
 
+5. With your favorite browser search for "my user agent" on Google and copy the value (Should start with: `Mozilla/5.0`)
+
+6. When requested paste the value and press enter.
+
 5. It's all, if everything goes well a result HTML page will open on your default web browser, otherwise check the terminal to see the error message(s).
 
 ### Script Arguments
@@ -93,9 +97,13 @@ With the command line version of the script you can use the following arguments:
 | `-c` *OR* `--articles-comment` |If specified the script will retrieve and add sellers comments to the result page. | No |
 
 ## Version
-Current version is `1.0.3`, you can download this latest release on the Releases category (on the sidebar), from [this page](https://github.com/BenSouchet/cw-wizard/releases) or `git clone` the `main` branch of the repository.
+Current version is `1.0.4`, you can download this latest release on the Releases category (on the sidebar), from [this page](https://github.com/BenSouchet/cw-wizard/releases) or `git clone` the `main` branch of the repository.
 
 ## Changelog
+### 1.0.4
+- Update Cloudflare bypass, now require to specify your browser User-Agent to properly bypass retrictions.
+- Fix price retrieve due to recent modification in the Cardmarket interface.
+- Fix minor issues
 
 ### 1.0.3
 - Bypassing newly added Cloudflare protection by using user cookies (thanks to package **Browser Cookie 3**).
