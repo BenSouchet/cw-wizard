@@ -144,8 +144,9 @@ As indicated at the beginning of this README, accounts with [Two-factor authenti
 This project has been created because the exiting tools (provided by [Cardmarket](https://www.cardmarket.com/en/Pokemon/Wants/ShoppingWizard)) are good but somehow limited, with this open-souce script it's easy to get exactly the result wanted.  
 If in the future, this project inspire others to create there own tools this would be a big success.
 
-## Others Ressouces & Useful links
+## Other Ressouces & Useful links
 - [CardmarketToCSV](https://github.com/decdod/CardmarketToCSV) by [ddkod](https://github.com/decdod)
+- [cm-wizard](https://github.com/michasng/cm-wizard) by [michasng](https://github.com/michasng)
 - [Python Requests Documentation](https://docs.python-requests.org/en/latest/user/quickstart/)
 - [Tillana Font](https://fonts.google.com/specimen/Tillana) by the [Indian Type Foundry](https://www.indiantypefoundry.com/) (License: [Open Font License](https://scripts.sil.org/cms/scripts/page.php?site_id=nrsi&id=OFL))
 
