@@ -1,10 +1,10 @@
  # Python shipped packages imports
 import re
 import sys
+import time
 import json
 import base64
 import logging
-import platform
 
 from decimal import Decimal
 from pathlib import Path
@@ -18,7 +18,7 @@ import browser_cookie3
 # Global variables
 SCRIPT_NAME = 'CW Wizard'
 
-VERSION = '1.0.5'
+VERSION = '1.0.6'
 
 EXIT_ERROR_MSG = 'The Wizard encountered issue(s) please check previous logs.\n'
 EXIT_SUCCESS_MSG = 'The Wizard has finish is work, have a great day!\n'
@@ -35,6 +35,9 @@ MAXIMUM_SELLERS = 20
 
 # This value cannot be currently override (this represent a max of 300 offers per card)
 MAXIMUM_NB_REQUESTS_PER_CARD = 6
+
+# The delay is now mandatory seen Cardmarket block for 2h to 24h users that makes too much requests in a small amount of time.
+DELAY_BETWEEN_REQUEST = 0.170
 
 CARD_LANGUAGES =  { 'English': 1, 'French': 2, 'German': 3, 'Spanish': 4,
                     'Italian': 5, 'S-Chinese': 6, 'Japanese': 7,
@@ -235,6 +238,7 @@ def cardmarket_log_in(session, credentials, silently=False):
     payload = {'__cmtkn': token, 'referalPage': referal_page_path, 'username': credentials['login'], 'userPassword': credentials['password']}
 
     # Step 4: Do the log-in POST request to Cardmarket with the payload
+    time.sleep(DELAY_BETWEEN_REQUEST)
     response_post_login = session.post('{}/en/{}/PostGetAction/User_Login'.format(CARDMARKET_BASE_URL, CURR_GAME), data=payload)
     if response_post_login.status_code != 200:
         # Issue with the request
@@ -260,6 +264,7 @@ def cardmarket_log_out(session, silently=False):
     if not silently:
         LOG.debug('------- The Wizard log out of the temporary session on Cardmarket...\n')
 
+    time.sleep(DELAY_BETWEEN_REQUEST)
     response_get_logout = session.get('{}/en/{}/PostGetAction/User_Logout'.format(CARDMARKET_BASE_URL, CURR_GAME))
     if response_get_logout.status_code != 200:
         # Issue with the request
@@ -330,6 +335,7 @@ def retrieve_wantlist(session, wantlist_url, continue_on_warning=False):
     wantlist_url = '{}/en/{}/Wants/{}'.format(CARDMARKET_BASE_URL, match.group('game'), match.group('wantlist_id'))
 
     # Step 1: Get the desired wantlist page
+    time.sleep(DELAY_BETWEEN_REQUEST)
     response_get_wantlist = session.get(wantlist_url)
     if response_get_wantlist.status_code != 200:
         # Issue with the request
@@ -391,7 +397,7 @@ def retrieve_wantlist(session, wantlist_url, continue_on_warning=False):
     return funct_result
 
 
-def _get_load_more_args(card, product_id):
+def _get_load_more_args(card, card_id, is_metacard):
     args_dict = { 'page': '0' }
     filter_settings = {}
     filter_settings['idLanguage'] = {str(CARD_LANGUAGES[language]): CARD_LANGUAGES[language] for language in card['languages']}
@@ -404,19 +410,31 @@ def _get_load_more_args(card, product_id):
         condition = condition[:condition.index(CARD_CONDITIONS_SHORTNAMES[card['minCondition']]) + 1]
     filter_settings['condition'] = condition
     args_dict['filterSettings'] = json.dumps(filter_settings, separators=('\\,', ':'))
-    args_dict['idProduct'] = product_id
+    if not is_metacard:
+        args_dict['idProduct'] = card_id
+    else:
+        args_dict['idMetacard'] = card_id
 
     return args_dict
 
 
-def _get_load_more_product_id(load_more_btn):
+def _get_load_more_card_id(load_more_btn):
     onclick_str = load_more_btn['onclick']
-    return re.search(r'\'idProduct\'\:\'(?P<product_id>\d+)\'', onclick_str).group('product_id')
+    is_metacard = False
 
+    # Looking for default Product ID
+    product_id_match = re.search(r'\'idProduct\'\:\'(?P<product_id>\d+)\'', onclick_str)
+    if product_id_match:
+        return is_metacard, product_id_match.group('product_id')
+
+    # Looking for Metacard ID
+    metacard_id_match = re.search(r'\'idMetacard\'\:\'(?P<metacard_id>\d+)\'', onclick_str)
+    if metacard_id_match:
+        return is_metacard, metacard_id_match.group('metacard_id')
 
 def _get_load_more_request_token(load_more_btn):
     onclick_str = load_more_btn['onclick']
-    return re.match(r'jcp\(\'(?P<token>[A-Z0-9%]+)\'', onclick_str).group('token')
+    return re.match(r"jcp\('(?P<token>[^']+)'", onclick_str).group('token')
 
 
 def load_more_articles(session, funct_result, soup, card, articles_table):
@@ -430,8 +448,8 @@ def load_more_articles(session, funct_result, soup, card, articles_table):
     # Step 2: Initialize variables
     active = True
     card_curr_game = re.match(CARDMARKET_BASE_URL_REGEX + r'\/\w{2}\/(\w+)', card['url']).group(1)
-    product_id = _get_load_more_product_id(load_more_btn)
-    load_more_args = _get_load_more_args(card, product_id)
+    is_metacard, card_id = _get_load_more_card_id(load_more_btn)
+    load_more_args = _get_load_more_args(card, card_id, is_metacard=is_metacard)
     request_token = _get_load_more_request_token(load_more_btn)
 
     # Step 3: Retrieve more article until card['maxPrice'] is reached or there is no more article to load
@@ -446,6 +464,7 @@ def load_more_articles(session, funct_result, soup, card, articles_table):
             # Step 3.B.I: Initialize a payload and do a POST request
             args_base64 = base64.b64encode(bytes(json.dumps(load_more_args, separators=(',', ':')), 'utf-8'))
             payload = {'args': request_token + args_base64.decode("utf-8")}
+            LOG.debug('     |_ Loading 50 more offers for the card...')
             response_post_load_article = session.post('{}/en/{}/AjaxAction'.format(CARDMARKET_BASE_URL, card_curr_game), data=payload)
             if response_post_load_article.status_code != 200:
                 # Issue with the request
@@ -500,6 +519,8 @@ def populate_sellers_dict(session, sellers, wantlist, articles_comment=False, co
                     params[attribute] = card[attribute]
 
             # Step 2: Get the card page
+            time.sleep(DELAY_BETWEEN_REQUEST)
+            LOG.debug('    |__ Retrieving offers for card: {} ...'.format(card['title']))
             response_get_card_articles = session.get(card['url'], params=params)
             if response_get_card_articles.status_code != 200:
                 # Issue with the request
@@ -739,8 +760,6 @@ def cardmarket_wantlist_wizard(browser_name, user_agent, credentials, wantlist_u
         session.cookies = get_cardmarket_cookies(browser_name)
         headers = REQUEST_HEADERS.copy()
         headers["user-agent"] = str(user_agent)
-        print(headers)
-        print(session.cookies)
         session.headers.update(headers)
 
         # Step 2: Log-in to Cardmarket
