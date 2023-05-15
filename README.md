@@ -97,9 +97,13 @@ With the command line version of the script you can use the following arguments:
 | `-c` *OR* `--articles-comment` |If specified the script will retrieve and add sellers comments to the result page. | No |
 
 ## Version
-Current version is `1.0.5`, you can download this latest release on the Releases category (on the sidebar), from [this page](https://github.com/BenSouchet/cw-wizard/releases) or `git clone` the `main` branch of the repository.
+Current version is `1.0.6`, you can download this latest release on the Releases category (on the sidebar), from [this page](https://github.com/BenSouchet/cw-wizard/releases) or `git clone` the `main` branch of the repository.
 
 ## Changelog
+
+### 1.0.6
+- Adding support for metacard in wantlists. Metacard is when a card is added to a wantlist without specifing the expansion (set to "Any").
+- Adding sleep time between requests to avoid the too many requests error. (current sleep value is 170ms).
 
 ### 1.0.5
 - Fixing issues with non english wantlist urls (for example urls with ".../fr/Pokémon/Wants/...").
