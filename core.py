@@ -33,7 +33,7 @@ CARDMARKET_BASE_URL_REGEX = r'^https:\/\/www\.cardmarket\.com'
 # This value can be override via script arguments or via GUI
 MAXIMUM_SELLERS = 20
 
-# This value cannot be currently override (this represent a max of 300 offers per card)
+# This value cannot be currently override (this represent a max of 350 offers per card)
 MAXIMUM_NB_REQUESTS_PER_CARD = 6
 
 # The delay is now mandatory seen Cardmarket block for 2h to 24h users that makes too much requests in a small amount of time.
