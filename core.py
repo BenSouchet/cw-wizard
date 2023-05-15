@@ -18,21 +18,23 @@ import browser_cookie3
 # Global variables
 SCRIPT_NAME = 'CW Wizard'
 
-VERSION = '1.0.4'
+VERSION = '1.0.5'
 
 EXIT_ERROR_MSG = 'The Wizard encountered issue(s) please check previous logs.\n'
 EXIT_SUCCESS_MSG = 'The Wizard has finish is work, have a great day!\n'
 
 # These two variables are extracted and set from the first wantlist url given to the script
-CURR_LANG = 'en'
 CURR_GAME = 'Magic'
 
 CARDMARKET_TOP_DOMAIN = '.cardmarket.com'
 CARDMARKET_BASE_URL = 'https://www' + CARDMARKET_TOP_DOMAIN
 CARDMARKET_BASE_URL_REGEX = r'^https:\/\/www\.cardmarket\.com'
 
-# This value can be overwriten via script arguments or via GUI
+# This value can be override via script arguments or via GUI
 MAXIMUM_SELLERS = 20
+
+# This value cannot be currently override (this represent a max of 300 offers per card)
+MAXIMUM_NB_REQUESTS_PER_CARD = 6
 
 CARD_LANGUAGES =  { 'English': 1, 'French': 2, 'German': 3, 'Spanish': 4,
                     'Italian': 5, 'S-Chinese': 6, 'Japanese': 7,
@@ -229,11 +231,11 @@ def cardmarket_log_in(session, credentials, silently=False):
 
     # Step 3: Prepare payload
     token = regex_match.group('token')
-    referal_page_path = '/{}/{}'.format(CURR_LANG, CURR_GAME)
+    referal_page_path = '/en/{}'.format(CURR_GAME)
     payload = {'__cmtkn': token, 'referalPage': referal_page_path, 'username': credentials['login'], 'userPassword': credentials['password']}
 
     # Step 4: Do the log-in POST request to Cardmarket with the payload
-    response_post_login = session.post('{}/{}/{}/PostGetAction/User_Login'.format(CARDMARKET_BASE_URL, CURR_LANG, CURR_GAME), data=payload)
+    response_post_login = session.post('{}/en/{}/PostGetAction/User_Login'.format(CARDMARKET_BASE_URL, CURR_GAME), data=payload)
     if response_post_login.status_code != 200:
         # Issue with the request
         funct_result.addDetailedRequestError('log-in to Cardmarket', response_post_login)
@@ -258,7 +260,7 @@ def cardmarket_log_out(session, silently=False):
     if not silently:
         LOG.debug('------- The Wizard log out of the temporary session on Cardmarket...\n')
 
-    response_get_logout = session.get('{}/{}/{}/PostGetAction/User_Logout'.format(CARDMARKET_BASE_URL, CURR_LANG, CURR_GAME))
+    response_get_logout = session.get('{}/en/{}/PostGetAction/User_Logout'.format(CARDMARKET_BASE_URL, CURR_GAME))
     if response_get_logout.status_code != 200:
         # Issue with the request
         funct_result.addDetailedRequestError('logout of Cardmarket', response_get_logout)
@@ -317,6 +319,15 @@ def retrieve_wantlist(session, wantlist_url, continue_on_warning=False):
     LOG.debug('  |____ The Wizard is retrieving the wantlist ("{}")...'.format(wantlist_url))
 
     wantlist = None
+
+    # Get Information from url to recreate it (changing language to english)
+    wantlist_url_regex = CARDMARKET_BASE_URL_REGEX + r"\/[a-z]{2}\/(?P<game>\w+)\/Wants/(?P<wantlist_id>\d+)$"
+    match = re.match(wantlist_url_regex, wantlist_url)
+    if not match:
+        funct_result.addError('The wantlist url ("{}") seems invalid'.format(wantlist_url))
+        return funct_result
+
+    wantlist_url = '{}/en/{}/Wants/{}'.format(CARDMARKET_BASE_URL, match.group('game'), match.group('wantlist_id'))
 
     # Step 1: Get the desired wantlist page
     response_get_wantlist = session.get(wantlist_url)
@@ -409,6 +420,8 @@ def _get_load_more_request_token(load_more_btn):
 
 
 def load_more_articles(session, funct_result, soup, card, articles_table):
+    nb_of_requests = 0
+
     # Step 1: Check if there isn't a load more articles button, in this case we stop
     load_more_btn = soup.find(id='loadMoreButton')
     if not load_more_btn:
@@ -422,7 +435,7 @@ def load_more_articles(session, funct_result, soup, card, articles_table):
     request_token = _get_load_more_request_token(load_more_btn)
 
     # Step 3: Retrieve more article until card['maxPrice'] is reached or there is no more article to load
-    while active:
+    while active and nb_of_requests < MAXIMUM_NB_REQUESTS_PER_CARD:
         # Step 3.A: Get the price of the last card currently displayed
         last_article = articles_table.contents[-1]
         last_article_price_str = last_article.find('div', class_='price-container').find('span', class_='text-nowrap').contents[0]
@@ -433,7 +446,7 @@ def load_more_articles(session, funct_result, soup, card, articles_table):
             # Step 3.B.I: Initialize a payload and do a POST request
             args_base64 = base64.b64encode(bytes(json.dumps(load_more_args, separators=(',', ':')), 'utf-8'))
             payload = {'args': request_token + args_base64.decode("utf-8")}
-            response_post_load_article = session.post('{}/{}/{}/AjaxAction'.format(CARDMARKET_BASE_URL, CURR_LANG, card_curr_game), data=payload)
+            response_post_load_article = session.post('{}/en/{}/AjaxAction'.format(CARDMARKET_BASE_URL, card_curr_game), data=payload)
             if response_post_load_article.status_code != 200:
                 # Issue with the request
                 funct_result.addWarning('Failed to load more articles for card page ("{}")'.format(card['title']))
@@ -442,15 +455,26 @@ def load_more_articles(session, funct_result, soup, card, articles_table):
 
             # Step 3.B.II: Handle the request result containing the new articles and the new page_index value
             more_article_soup = BeautifulSoup(response_post_load_article.text, 'html.parser')
-            load_more_args['page'] = int(more_article_soup.find('newpage').contents[0])
+            new_page_index_soup = more_article_soup.find('newpage')
+            if new_page_index_soup:
+                load_more_args['page'] = int(new_page_index_soup.contents[0])
+                new_articles_rows_soup = more_article_soup.find('rows')
+                if new_articles_rows_soup:
+                    articles_rows_html_str = base64.b64decode(new_articles_rows_soup.contents[0]).decode("utf-8")
+                    articles_table.append(BeautifulSoup(articles_rows_html_str, 'html.parser'))
+                else:
+                    active = False
 
-            articles_rows_html_str = base64.b64decode(more_article_soup.find('rows').contents[0]).decode("utf-8")
-            articles_table.append(BeautifulSoup(articles_rows_html_str, 'html.parser'))
-            if load_more_args['page'] < 0:
-                # There is no more article available, stop the process
+                # TODO: All these if else active = False should be refactored
+                if load_more_args['page'] < 0:
+                    # There is no more article available, stop the process
+                    active = False
+            else:
                 active = False
         else:
             active = False
+
+        nb_of_requests += 1
 
 
 def populate_sellers_dict(session, sellers, wantlist, articles_comment=False, continue_on_warning=False):
@@ -460,7 +484,7 @@ def populate_sellers_dict(session, sellers, wantlist, articles_comment=False, co
     LOG.debug('  |____ The Wizard is aggregating sellers and articles data for the wantlist ("{}")...'.format(wantlist_url))
 
     for card in wantlist:
-        # If multiple languages selected with do one request per language
+        # If multiple languages selected, do one request per language
         for card_language in card['languages']:
             # Save a sellers list for the current card,
             # to avoid adding multiple time the same article for a seller
@@ -494,7 +518,7 @@ def populate_sellers_dict(session, sellers, wantlist, articles_comment=False, co
             if isinstance(card['maxPrice'], Decimal):
                 load_more_articles(session, funct_result, soup, card, articles_table)
 
-            # Step 4: Iterate over articles
+            # Step 4: Iterate over articles (a.k.a offers)
             for article_row in articles_table.children:
                 # Step 4.A: Check if this is a proper article
                 if 'article-row' not in article_row.attrs['class']:
@@ -857,9 +881,7 @@ def check_wantlists_and_max_sellers(wantlist_urls, max_sellers, silently=False):
     # Since new games can be added to Cardmarket, checking "global_game" is not worth it
 
     # Step 4: Assign info to global variables
-    global CURR_LANG
     global CURR_GAME
-    CURR_LANG = global_language
     CURR_GAME = global_game
 
     return funct_result

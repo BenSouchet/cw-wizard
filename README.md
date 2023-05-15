@@ -97,9 +97,15 @@ With the command line version of the script you can use the following arguments:
 | `-c` *OR* `--articles-comment` |If specified the script will retrieve and add sellers comments to the result page. | No |
 
 ## Version
-Current version is `1.0.4`, you can download this latest release on the Releases category (on the sidebar), from [this page](https://github.com/BenSouchet/cw-wizard/releases) or `git clone` the `main` branch of the repository.
+Current version is `1.0.5`, you can download this latest release on the Releases category (on the sidebar), from [this page](https://github.com/BenSouchet/cw-wizard/releases) or `git clone` the `main` branch of the repository.
 
 ## Changelog
+
+### 1.0.5
+- Fixing issues with non english wantlist urls (for example urls with ".../fr/Pokémon/Wants/...").
+- Adding a maximum of 6 resquests per card in wantlist (7 with the initial one) to avoid reaching Cardmarket user request limit to quickly due to one card settings.
+- Fixing bugs with None object when loading more offers for cards.
+
 ### 1.0.4
 - Update Cloudflare bypass, now require to specify your browser User-Agent to properly bypass retrictions.
 - Fix price retrieve due to recent modification in the Cardmarket interface.

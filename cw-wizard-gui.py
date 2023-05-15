@@ -218,7 +218,7 @@ def next_step(window, param1, param2):
         window.browser_name = result.getResult()
 
         # Step 1.B: Handling User-Agent
-        user_agent = param2.get()
+        user_agent = param2.get().strip()
         if not user_agent:
             set_window_description(window, 'Error: User-Agent cannot be empty.', is_error=True)
             return True
